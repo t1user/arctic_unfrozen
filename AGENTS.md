@@ -19,6 +19,7 @@ This repository contains the legacy `arctic` Python package, now in maintenance 
 - `python setup.py install`: install Arctic and its dependencies into the active virtualenv.
 - `python setup.py test`: run the full pytest suite with coverage and JUnit output configured by `setup.py`.
 - `python setup.py test -a tests/unit/test_auth.py`: run a focused test file or directory.
+- `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 and 3.13.
 - `pycodestyle arctic tests`: check style using the ignore rules in `setup.cfg`.
 - `mkdocs build`: build documentation locally when docs are changed.
 
@@ -31,6 +32,8 @@ Prefer minimal, targeted changes that preserve the existing architecture. Follow
 ## Testing Guidelines
 
 Use `pytest`. Put fast isolated tests in `tests/unit/` and MongoDB-backed or end-to-end coverage in `tests/integration/`. Name test files `test_*.py` and test functions `test_*`. Add focused regression tests near the affected module, for example `tests/unit/chunkstore/` for `arctic/chunkstore/` changes. If an integration test needs external services, state that clearly in the PR.
+
+GitHub Actions currently runs `python -m pytest tests/unit` on Python 3.10 and 3.13. Keep this baseline green before expanding the matrix or adding integration-test jobs.
 
 ## Commit & Pull Request Guidelines
 
