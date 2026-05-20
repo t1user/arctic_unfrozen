@@ -1,3 +1,5 @@
+import datetime
+
 import dateutil
 import tzlocal
 
@@ -6,16 +8,16 @@ class TimezoneError(Exception):
     pass
 
 
-def _get_localzone_name():
+def _get_localzone_name() -> str:
     """Return the local timezone name across supported tzlocal versions."""
-    if hasattr(tzlocal, 'get_localzone_name'):
+    if hasattr(tzlocal, "get_localzone_name"):
         return tzlocal.get_localzone_name()
 
     local_zone = tzlocal.get_localzone()
-    return getattr(local_zone, 'zone', getattr(local_zone, 'key', str(local_zone)))
+    return getattr(local_zone, "zone", getattr(local_zone, "key", str(local_zone)))
 
 
-def mktz(zone=None):
+def mktz(zone: str | None = None) -> datetime.tzinfo:
     """
     Return a new timezone (tzinfo object) based on the zone using the python-dateutil
     package.
@@ -44,10 +46,10 @@ def mktz(zone=None):
     if not tz:
         raise TimezoneError('Timezone "%s" can not be read' % (zone))
     # Stash the zone name as an attribute (as pytz does)
-    if not hasattr(tz, 'zone'):
+    if not hasattr(tz, "zone"):
         tz.zone = zone
         for p in dateutil.tz.TZPATHS:
             if zone.startswith(p):
-                tz.zone = zone[len(p) + 1:]
+                tz.zone = zone[len(p) + 1 :]
                 break
     return tz

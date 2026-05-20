@@ -16,7 +16,7 @@ This repository contains the legacy `arctic` Python package, now in maintenance 
 
 ## Build, Test, and Development Commands
 
-- `python -m pip install -e .[test]`: install Arctic and test tooling into the active virtualenv.
+- `python -m pip install -e .[test,dev]`: install Arctic plus test and development tooling into the active virtualenv.
 - `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 and 3.13.
 - `python -m pytest tests/unit/test_auth.py`: run a focused test file or directory.
 - `pycodestyle arctic tests`: check style using the ignore rules in `setup.cfg`.

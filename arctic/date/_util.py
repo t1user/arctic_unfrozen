@@ -2,6 +2,8 @@ import calendar
 import datetime
 import sys
 from datetime import timedelta
+from typing import cast
+
 import pandas as pd
 
 from ._daterange import DateRange
@@ -14,13 +16,12 @@ if sys.version_info > (3,):
 
 
 # Support standard brackets syntax for open/closed ranges.
-Ranges = {'()': OPEN_OPEN,
-          '(]': OPEN_CLOSED,
-          '[)': CLOSED_OPEN,
-          '[]': CLOSED_CLOSED}
+Ranges = {"()": OPEN_OPEN, "(]": OPEN_CLOSED, "[)": CLOSED_OPEN, "[]": CLOSED_CLOSED}
 
 
-def string_to_daterange(str_range, delimiter='-', as_dates=False, interval=CLOSED_CLOSED):
+def string_to_daterange(
+    str_range: str, delimiter: str = "-", as_dates: bool = False, interval=CLOSED_CLOSED
+) -> DateRange:
     """
     Convert a string to a DateRange type. If you put only one date, it generates the
     relevant range for just that date or datetime till 24 hours later. You can optionally
@@ -62,7 +63,7 @@ def string_to_daterange(str_range, delimiter='-', as_dates=False, interval=CLOSE
     """
     num_dates = str_range.count(delimiter) + 1
     if num_dates > 2:
-        raise ValueError('Too many dates in input string [%s] with delimiter (%s)' % (str_range, delimiter))
+        raise ValueError("Too many dates in input string [%s] with delimiter (%s)" % (str_range, delimiter))
 
     # Allow the user to use the [date-date), etc. range syntax to specify the interval.
     range_mode = Ranges.get(str_range[0] + str_range[-1], None)
@@ -77,13 +78,13 @@ def string_to_daterange(str_range, delimiter='-', as_dates=False, interval=CLOSE
         d = [parse_dt(x) for x in str_range.split(delimiter)]
         oc = interval
     else:
-        start = parse_dt(str_range)
+        start = cast(datetime.date | datetime.datetime, parse_dt(str_range))
         d = [start, start + datetime.timedelta(1)]
         oc = CLOSED_OPEN  # Always use closed-open for a single date/datetime.
     return DateRange(d[0], d[1], oc)
 
 
-def to_dt(date, default_tz=None):
+def to_dt(date: int | datetime.datetime, default_tz: datetime.tzinfo | None = None) -> datetime.datetime:
     """
     Returns a non-naive datetime.datetime.
 
@@ -111,7 +112,7 @@ def to_dt(date, default_tz=None):
     return date
 
 
-def to_pandas_closed_closed(date_range, add_tz=True):
+def to_pandas_closed_closed(date_range: DateRange | None, add_tz: bool = True) -> DateRange | None:
     """
     Pandas DateRange slicing is CLOSED-CLOSED inclusive at both ends.
 
@@ -145,10 +146,10 @@ def to_pandas_closed_closed(date_range, add_tz=True):
     return DateRange(start, end)
 
 
-def ms_to_datetime(ms, tzinfo=None):
+def ms_to_datetime(ms: int, tzinfo: datetime.tzinfo | None = None) -> datetime.datetime:
     """Convert a millisecond time value to an offset-aware Python datetime object."""
     if not isinstance(ms, (int, long)):
-        raise TypeError('expected integer, not %s' % type(ms))
+        raise TypeError("expected integer, not %s" % type(ms))
 
     if tzinfo is None:
         tzinfo = mktz()
@@ -156,13 +157,13 @@ def ms_to_datetime(ms, tzinfo=None):
     return datetime.datetime.fromtimestamp(ms * 1e-3, tzinfo)
 
 
-def _add_tzone(dtm):
+def _add_tzone(dtm: datetime.datetime) -> datetime.datetime:
     if dtm.tzinfo is None:
         dtm = dtm.replace(tzinfo=mktz())
     return dtm
 
 
-def datetime_to_ms(d):
+def datetime_to_ms(d: datetime.datetime) -> int:
     """Convert a Python datetime object to a millisecond epoch (UTC) time value."""
     try:
         millisecond = d.microsecond // 1000
@@ -179,18 +180,14 @@ def datetime_to_ms(d):
             else:
                 return calendar.timegm(tmp.utctimetuple()) * 1000 + millisecond
     except AttributeError:
-        raise TypeError('expect Python datetime object, not %s' % type(d))
+        raise TypeError("expect Python datetime object, not %s" % type(d))
 
 
-def utc_dt_to_local_dt(dtm):
+def utc_dt_to_local_dt(dtm: datetime.datetime) -> datetime.datetime:
     """Convert a UTC datetime to datetime in local timezone"""
     utc_zone = mktz("UTC")
     if dtm.tzinfo is not None and dtm.tzinfo != utc_zone:
-        raise ValueError(
-            "Expected dtm without tzinfo or with UTC, not %r" % (
-                dtm.tzinfo
-            )
-        )
+        raise ValueError("Expected dtm without tzinfo or with UTC, not %r" % (dtm.tzinfo))
 
     if dtm.tzinfo is None:
         dtm = dtm.replace(tzinfo=utc_zone)

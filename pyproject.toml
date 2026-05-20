@@ -54,6 +54,11 @@ tests = [
     "pytest-cov",
     "pytest-timeout",
 ]
+dev = [
+    "black",
+    "flake8",
+    "mypy",
+]
 
 [project.urls]
 Homepage = "https://github.com/man-group/arctic"
