@@ -35,6 +35,8 @@ Use `pytest`. Put fast isolated tests in `tests/unit/` and MongoDB-backed or end
 
 GitHub Actions currently runs `python -m pytest tests/unit` on Python 3.10 and 3.13. Keep this baseline green before expanding the matrix or adding integration-test jobs.
 
+Benchmarking is deferred to a later stage. The existing ASV and manual benchmark scripts in `benchmarks/` are stale, partly MongoDB-backed, and not suitable for required CI until they are modernized for the supported Python versions and isolated test data.
+
 ## Commit & Pull Request Guidelines
 
 Recent history uses short imperative summaries and merge commits such as `pandas 2: is_monotonic was removed, replaced by is_monotonic_increasing`. Keep commit messages concise and specific; when committing from Codex, append `[codex]` to the commit message. Pull requests should describe the behavior changed, list tests run, link related issues when available, and call out compatibility risks for pandas, numpy, or pymongo.
