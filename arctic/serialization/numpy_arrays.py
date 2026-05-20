@@ -144,6 +144,8 @@ class FrameConverter(object):
         Decode a Pymongo SON object into an Pandas DataFrame
         """
         cols = columns or doc[METADATA][COLUMNS]
+        if not cols:
+            return pd.DataFrame()
         data = {}
 
         for col in cols:

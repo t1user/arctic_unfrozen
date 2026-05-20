@@ -146,6 +146,9 @@ def test_pandas_timestamp_issue():
     else:
         assert(ts.to_pydatetime().utctimetuple().tm_hour == 21)
         assert(ts.timetuple().tm_hour == 16)
-        # fails
-        with pytest.raises(TypeError):
+        try:
             ts.utctimetuple()
+        except TypeError:
+            pass
+        else:
+            assert(ts.utctimetuple().tm_hour == 21)

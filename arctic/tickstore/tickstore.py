@@ -710,7 +710,6 @@ class TickStore(object):
         logger.warning("NB treating all values as 'exists' - no longer sparse")
         rowmask = Binary(lz4_compressHC(np.packbits(np.ones(len(df), dtype='uint8')).tobytes()))
 
-        index_name = df.index.names[0] or "index"
         if PD_VER < '0.23.0':
             recs = df.to_records(convert_datetime64=False)
         else:
@@ -724,11 +723,10 @@ class TickStore(object):
                 DTYPE: TickStore._str_dtype(array.dtype),
             }
             rtn[COLUMNS][col] = col_data
+        index_ms = np.array([TickStore._to_ms(to_dt(index.to_pydatetime())) for index in df.index], dtype='uint64')
         rtn[INDEX] = Binary(
             lz4_compressHC(np.concatenate(
-                ([recs[index_name][0].astype('datetime64[ms]').view('uint64')],
-                 np.diff(
-                     recs[index_name].astype('datetime64[ms]').view('uint64')))).tobytes()))
+                ([index_ms[0]], np.diff(index_ms))).tobytes()))
         return rtn, final_image
 
     @staticmethod
