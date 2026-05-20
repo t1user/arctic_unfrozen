@@ -23,6 +23,14 @@ long_description_content_type='text/markdown'
 long_description = open('README.md').read()
 changelog = open('CHANGES.md').read()
 
+test_requires = [
+    "mock",
+    "mockextras",
+    "pytest",
+    "pytest-cov",
+    "pytest-timeout",
+]
+
 
 setup(
     name="arctic",
@@ -34,25 +42,21 @@ setup(
     keywords=["ahl", "keyvalue", "tickstore", "mongo", "timeseries", ],
     url="https://github.com/man-group/arctic",
     packages=find_packages(exclude=['tests', 'tests.*', 'benchmarks']),
+    python_requires=">=3.10",
     long_description='\n'.join((long_description, changelog)),
     long_description_content_type="text/markdown",
     install_requires=["decorator",
-                      "enum-compat",
-                      "mock",
-                      "mockextras",
                       "pandas",
                       "numpy",
+                      "python-dateutil",
                       "pymongo<4",
                       "pytz",
                       "tzlocal",
                       "lz4",
                      ],
     extras_require={
-        "test": [
-            "pytest",
-            "pytest-cov",
-            "pytest-timeout",
-        ],
+        "test": test_requires,
+        "tests": test_requires,
     },
     entry_points={'console_scripts': [
                                         'arctic_init_library = arctic.scripts.arctic_init_library:main',
@@ -68,9 +72,11 @@ setup(
     classifiers=[
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Programming Language :: Python :: Implementation :: CPython",
         "Operating System :: POSIX",
         "Operating System :: MacOS",
