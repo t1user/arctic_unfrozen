@@ -16,44 +16,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
 # USA
 
-import logging
-import sys
-
 from setuptools import find_packages
 from setuptools import setup
-from setuptools.command.test import test as TestCommand
 
 long_description_content_type='text/markdown'
 long_description = open('README.md').read()
 changelog = open('CHANGES.md').read()
-
-
-class PyTest(TestCommand):
-    user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
-
-    def initialize_options(self):
-        TestCommand.initialize_options(self)
-        self.pytest_args = []
-
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = []
-        self.test_suite = True
-
-    def run_tests(self):
-        logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(message)s', level='DEBUG')
-
-        # import here, cause outside the eggs aren't loaded
-        import pytest
-
-        args = [self.pytest_args] if isinstance(self.pytest_args, str) else list(self.pytest_args)
-        args.extend(['--cov', 'arctic',
-                     '--cov-report', 'xml',
-                     '--cov-report', 'html',
-                     '--junitxml', 'test-results/junit.xml',
-                     ])
-        errno = pytest.main(args)
-        sys.exit(errno)
 
 
 setup(
@@ -68,10 +36,6 @@ setup(
     packages=find_packages(exclude=['tests', 'tests.*', 'benchmarks']),
     long_description='\n'.join((long_description, changelog)),
     long_description_content_type="text/markdown",
-    cmdclass={'test': PyTest},
-    setup_requires=["numpy<2",
-                    "setuptools-git",
-                   ],
     install_requires=["decorator",
                       "enum-compat",
                       "mock",
@@ -83,19 +47,13 @@ setup(
                       "tzlocal",
                       "lz4",
                      ],
-    # Note: pytest >= 4.1.0 is not compatible with pytest-cov < 2.6.1.
-    # deprecated
-    tests_require=["mock<=2.0.0",
-                   "mockextras",
-                   "pytest",
-                   "pytest-cov",
-                   "pytest-server-fixtures",
-                   "pytest-timeout",
-                   "pytest-xdist<=1.26.1",
-                   "tomli<2; python_version=='3.6'",
-                   "lz4",
-                   "tzlocal<=1.4; python_version<='3.6'",
-                   ],
+    extras_require={
+        "test": [
+            "pytest",
+            "pytest-cov",
+            "pytest-timeout",
+        ],
+    },
     entry_points={'console_scripts': [
                                         'arctic_init_library = arctic.scripts.arctic_init_library:main',
                                         'arctic_list_libraries = arctic.scripts.arctic_list_libraries:main',

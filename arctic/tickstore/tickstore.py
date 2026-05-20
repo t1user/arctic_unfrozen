@@ -666,7 +666,7 @@ class TickStore(object):
                 # `string` in python2 and `bytes` in python3
                 raise UnhandledDtypeException("Casting object column to string failed")
             try:
-                array = array.astype(np.unicode_)
+                array = array.astype(np.str_)
             except (UnicodeDecodeError, SystemError):
                 # `UnicodeDecodeError` in python2 and `SystemError` in python3
                 array = np.array([s.decode('utf-8') for s in array])

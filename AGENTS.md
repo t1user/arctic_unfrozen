@@ -16,10 +16,9 @@ This repository contains the legacy `arctic` Python package, now in maintenance 
 
 ## Build, Test, and Development Commands
 
-- `python setup.py install`: install Arctic and its dependencies into the active virtualenv.
-- `python setup.py test`: run the full pytest suite with coverage and JUnit output configured by `setup.py`.
-- `python setup.py test -a tests/unit/test_auth.py`: run a focused test file or directory.
+- `python -m pip install -e .[test]`: install Arctic and test tooling into the active virtualenv.
 - `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 and 3.13.
+- `python -m pytest tests/unit/test_auth.py`: run a focused test file or directory.
 - `pycodestyle arctic tests`: check style using the ignore rules in `setup.cfg`.
 - `mkdocs build`: build documentation locally when docs are changed.
 
@@ -39,7 +38,7 @@ Benchmarking is deferred to a later stage. The existing ASV and manual benchmark
 
 ## Commit & Pull Request Guidelines
 
-Recent history uses short imperative summaries and merge commits such as `pandas 2: is_monotonic was removed, replaced by is_monotonic_increasing`. Keep commit messages concise and specific; when committing from Codex, append `[codex]` to the commit message. Pull requests should describe the behavior changed, list tests run, link related issues when available, and call out compatibility risks for pandas, numpy, or pymongo.
+Recent history uses short imperative summaries and merge commits such as `pandas 2: is_monotonic was removed, replaced by is_monotonic_increasing`. Keep commit messages concise and specific; when committing from Codex, append `[codex]` to the commit message. Push only when explicitly prompted. Pull requests should describe the behavior changed, list tests run, link related issues when available, and call out compatibility risks for pandas, numpy, or pymongo.
 
 ## Security & Configuration Tips
 
