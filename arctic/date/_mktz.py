@@ -6,6 +6,15 @@ class TimezoneError(Exception):
     pass
 
 
+def _get_localzone_name():
+    """Return the local timezone name across supported tzlocal versions."""
+    if hasattr(tzlocal, 'get_localzone_name'):
+        return tzlocal.get_localzone_name()
+
+    local_zone = tzlocal.get_localzone()
+    return getattr(local_zone, 'zone', getattr(local_zone, 'key', str(local_zone)))
+
+
 def mktz(zone=None):
     """
     Return a new timezone (tzinfo object) based on the zone using the python-dateutil
@@ -29,7 +38,7 @@ def mktz(zone=None):
     TimezoneError : Raised if a user inputs a bad timezone name.
     """
     if zone is None:
-        zone = tzlocal.get_localzone().zone
+        zone = _get_localzone_name()
 
     tz = dateutil.tz.gettz(zone)
     if not tz:

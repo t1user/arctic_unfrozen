@@ -142,7 +142,14 @@ def _define_compat_pickle_load():
     """
     if pd.__version__.startswith("0.14"):
         return pickle.load
-    return pickle_compat.load
+    if hasattr(pickle_compat, 'load'):
+        return pickle_compat.load
+
+    def load(file_handle):
+        """Load pickled data using pandas' compatibility unpickler."""
+        return pickle_compat.Unpickler(file_handle).load()
+
+    return load
 
 
 def analyze_symbol(instance, sym, from_ver, to_ver, do_reads=False):

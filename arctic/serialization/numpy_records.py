@@ -38,7 +38,15 @@ def set_fast_check_df_serializable(config):
     FAST_CHECK_DF_SERIALIZABLE = bool(config)
 
 
+def _as_numpy_array(arr):
+    """Return a numpy-backed array for pandas extension arrays."""
+    if not hasattr(arr.dtype, 'hasobject'):
+        return np.asarray(arr)
+    return arr
+
+
 def _to_primitive(arr, string_max_len=None, forced_dtype=None):
+    arr = _as_numpy_array(arr)
     if arr.dtype.hasobject:
         if len(arr) > 0 and isinstance(arr[0], Timestamp):
             return np.array([t.value for t in arr], dtype=DTN64_DTYPE)
