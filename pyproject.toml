@@ -3,14 +3,15 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "arctic"
+name = "arctic_refrozen"
 version = "1.83.1"
-description = "AHL Research Versioned TimeSeries and Tick store"
+description = "Versioned TimeSeries and Tick store forked from AHL Research's Arctic"
 dynamic = ["readme"]
 requires-python = ">=3.10"
 license = {text = "LGPL-2.1-or-later"}
 authors = [
-    {name = "Man AHL Technology", email = "arctic@man.com"},
+  {name = "Man AHL Technology", email = "arctic@man.com"},
+  {name="t1user", email = "enterdragon@duck.com"},
 ]
 keywords = ["ahl", "keyvalue", "tickstore", "mongo", "timeseries"]
 classifiers = [
@@ -60,7 +61,7 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/man-group/arctic"
+Homepage = "https://github.com/t1user/arctic_refrozen"
 
 [project.scripts]
 arctic_init_library = "arctic.scripts.arctic_init_library:main"
