@@ -2,7 +2,7 @@
 
 ## Purpose & Procedure
 
-Project's purpose is to revive this long unmaintained repo. The target is to make it use latest version of dependencies including current version of python, mongo, pymongo, pandas and numpy. While being compatible with python 3.14, backward compatibility should be mainted with python 3.10. It's paramount not to break any functionality and keep existing interface. Subsequently new functionality and additional interface points may be added but it should be done while keeping full backwards compatibility. Don't make sweeping changes all at once, focus on the requested change. If warranted you may suggest next steps to achieve the overall purpose.
+Project's purpose is to revive this long unmaintained repo. The target is to make it use latest version of dependencies including current version of python, mongo, pymongo, pandas and numpy. Supported Python versions are currently 3.10 through 3.13. It's paramount not to break any functionality and keep existing interface. Subsequently new functionality and additional interface points may be added but it should be done while keeping full backwards compatibility. Don't make sweeping changes all at once, focus on the requested change. If warranted you may suggest next steps to achieve the overall purpose.
 
 ## Target Structure
 
@@ -17,7 +17,7 @@ This repository contains the legacy `arctic` Python package, now in maintenance 
 ## Build, Test, and Development Commands
 
 - `python -m pip install -e .[test,dev]`: install Arctic plus test and development tooling into the active virtualenv.
-- `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 and 3.13.
+- `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 through 3.13.
 - `python -m pytest tests/unit/test_auth.py`: run a focused test file or directory.
 - `pycodestyle arctic tests`: check style using the ignore rules in `setup.cfg`.
 - `mkdocs build`: build documentation locally when docs are changed.
@@ -32,7 +32,7 @@ Prefer minimal, targeted changes that preserve the existing architecture. Follow
 
 Use `pytest`. Put fast isolated tests in `tests/unit/` and MongoDB-backed or end-to-end coverage in `tests/integration/`. Name test files `test_*.py` and test functions `test_*`. Add focused regression tests near the affected module, for example `tests/unit/chunkstore/` for `arctic/chunkstore/` changes. If an integration test needs external services, state that clearly in the PR.
 
-GitHub Actions currently runs `python -m pytest tests/unit` on Python 3.10 and 3.13. Keep this baseline green before expanding the matrix or adding integration-test jobs.
+GitHub Actions currently runs `python -m pytest tests/unit` on Python 3.10 through 3.13. Keep this baseline green before expanding the matrix or adding integration-test jobs.
 
 Benchmarking is deferred to a later stage. The existing ASV and manual benchmark scripts in `benchmarks/` are stale, partly MongoDB-backed, and not suitable for required CI until they are modernized for the supported Python versions and isolated test data.
 
