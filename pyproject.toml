@@ -2,6 +2,78 @@
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "arctic"
+version = "1.83.1"
+description = "AHL Research Versioned TimeSeries and Tick store"
+dynamic = ["readme"]
+requires-python = ">=3.10"
+license = {text = "LGPL-2.1-or-later"}
+authors = [
+    {name = "Man AHL Technology", email = "arctic@man.com"},
+]
+keywords = ["ahl", "keyvalue", "tickstore", "mongo", "timeseries"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Database",
+    "Topic :: Database :: Front-Ends",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "decorator",
+    "pandas",
+    "numpy",
+    "python-dateutil",
+    "pymongo<4",
+    "pytz",
+    "tzlocal",
+    "lz4",
+]
+
+[project.optional-dependencies]
+test = [
+    "mock",
+    "mockextras",
+    "pytest",
+    "pytest-cov",
+    "pytest-timeout",
+]
+tests = [
+    "mock",
+    "mockextras",
+    "pytest",
+    "pytest-cov",
+    "pytest-timeout",
+]
+
+[project.urls]
+Homepage = "https://github.com/man-group/arctic"
+
+[project.scripts]
+arctic_init_library = "arctic.scripts.arctic_init_library:main"
+arctic_list_libraries = "arctic.scripts.arctic_list_libraries:main"
+arctic_delete_library = "arctic.scripts.arctic_delete_library:main"
+arctic_enable_sharding = "arctic.scripts.arctic_enable_sharding:main"
+arctic_copy_data = "arctic.scripts.arctic_copy_data:main"
+arctic_create_user = "arctic.scripts.arctic_create_user:main"
+arctic_prune_versions = "arctic.scripts.arctic_prune_versions:main"
+arctic_fsck = "arctic.scripts.arctic_fsck:main"
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md", "CHANGES.md"], content-type = "text/markdown"}
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "tests.*", "benchmarks"]
+
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]
