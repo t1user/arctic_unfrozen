@@ -1,18 +1,51 @@
-/build
-*.eggs/
-*.pyc
-/src/_compress.c
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build and packaging output
+/build/
+/dist/
 *.egg
+*.eggs/
+*.egg-info/
 *.so
-*.egg-info
+*.pyd
+/src/_compress.c
 
-# Coverage
-htmlcov
+# Test, coverage, and analysis output
+htmlcov/
 .coverage
-.idea
-.cache
+.coverage.*
 coverage.xml
-junit.xml
-/tmp/
+/junit.xml
+/test-results/
+/.pytest_cache/
+/.mypy_cache/
+/.ruff_cache/
+/.tox/
+/.nox/
+.cache/
 
+# Local environments and configuration
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+!.env.example
+
+# Documentation and benchmarks
+/site/
+/.asv/
+
+# IDEs and editor state
+.idea/
+.vscode/
 *.sw[op]
+*~
+.DS_Store
+
+# Local scratch space
+/tmp/
