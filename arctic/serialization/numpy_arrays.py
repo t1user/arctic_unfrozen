@@ -59,6 +59,9 @@ class FrameConverter(object):
         """
         Converts object arrays of strings to numpy string arrays
         """
+        if not hasattr(a.dtype, 'str'):
+            a = np.asarray(a)
+
         # No conversion for scalar type
         if a.dtype != 'object':
             return a, None

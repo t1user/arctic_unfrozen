@@ -193,22 +193,22 @@ def test_can_convert_to_records_mixed_object_column_string_nan(fast_serializable
         df = pd.DataFrame({'a': [1, 3, 4], 'b': [1, 8.0, 2]})
         assert serializer.can_convert_to_records_without_objects(df, 'my_symbol')
 
-        df = pd.DataFrame({'a': [1, 3, 4], 'b': [1.2, 8.0, np.NaN]})
+        df = pd.DataFrame({'a': [1, 3, 4], 'b': [1.2, 8.0, np.nan]})
         assert serializer.can_convert_to_records_without_objects(df, 'my_symbol')
 
-        df = pd.DataFrame({'a': ['abc', 'cde', 'def'], 'b': [1.2, 8.0, np.NaN]})
+        df = pd.DataFrame({'a': ['abc', 'cde', 'def'], 'b': [1.2, 8.0, np.nan]})
         assert serializer.can_convert_to_records_without_objects(df, 'my_symbol')
 
-        df = pd.DataFrame({'a': [u'abc', u'cde', 'def'], 'b': [1.2, 8.0, np.NaN]})
+        df = pd.DataFrame({'a': [u'abc', u'cde', 'def'], 'b': [1.2, 8.0, np.nan]})
         assert serializer.can_convert_to_records_without_objects(df, 'my_symbol')
 
-        df = pd.DataFrame({'a': [u'abc', u'cde', 'def'], 'b': [1.2, '8.0', np.NaN]})
+        df = pd.DataFrame({'a': [u'abc', u'cde', 'def'], 'b': [1.2, '8.0', np.nan]})
         assert not serializer.can_convert_to_records_without_objects(df, 'my_symbol')
 
         # Do not serialize and force-stringify None
-        df = pd.DataFrame({'a': ['abc', None, 'def'], 'b': [1.2, 8.0, np.NaN]})
+        df = pd.DataFrame({'a': ['abc', None, 'def'], 'b': [1.2, 8.0, np.nan]})
         assert not serializer.can_convert_to_records_without_objects(df, 'my_symbol')
 
-        # Do not serialize and force-stringify np.NaN among strings, rather pickle
-        df = pd.DataFrame({'a': ['abc', np.NaN, 'def'], 'b': [1.2, 8.0, np.NaN]})
+        # Do not serialize and force-stringify np.nan among strings, rather pickle
+        df = pd.DataFrame({'a': ['abc', np.nan, 'def'], 'b': [1.2, 8.0, np.nan]})
         assert not serializer.can_convert_to_records_without_objects(df, 'my_symbol')
