@@ -22,12 +22,23 @@ This repository contains the legacy `arctic` Python package, now in maintenance 
 - `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 through 3.13.
 - `python -m nox -s unit`: run the unit-test CI session on the active Python.
 - `python -m nox -s integration`: run the MongoDB-backed integration-test CI session on the active Python. Without `ARCTIC_TEST_MONGO_HOST`, this starts a local `mongod` if available.
-- `python -m nox -s unit_matrix integration_matrix`: run the full local Python matrix when Python 3.10 through 3.13 interpreters are installed.
+- `python -m nox -s unit_matrix integration_matrix`: run the full local Python matrix only before high-risk pushes or when explicitly requested. It is too slow for routine edit cycles.
 - `python -m pytest tests/unit/test_auth.py`: run a focused test file or directory.
-- `pycodestyle arctic tests`: check style using the ignore rules in `setup.cfg`.
+- `git diff --check`: catch whitespace and conflict-marker issues before committing.
+- `pycodestyle arctic tests`: check style using the ignore rules in `setup.cfg` when style-sensitive files are changed. Prefer focused checks during compatibility work.
 - `mkdocs build`: build documentation locally when docs are changed.
 
 Use a virtualenv for local work, for example `virtualenv .venv -p python3` and `source .venv/bin/activate`.
+
+## Verification Policy
+
+Use the narrowest useful verification first, then escalate based on risk and failures. Do not run full integration or full Python matrices after every small edit.
+
+- For documentation-only changes: run `git diff --check`; no tests are required unless commands or examples changed.
+- For small code edits: run `git diff --check`, compile touched modules if useful, and run the focused unit or integration test covering the changed path.
+- For shared behavior changes in storage, dates, serialization, MongoDB, or pandas/numpy compatibility: run the focused tests first, then `python -m nox -s unit`; add targeted integration tests for the affected subsystem.
+- Before pushing for CI validation: rely on GitHub Actions for the full supported Python matrix unless the change is high risk or CI failures need local reproduction.
+- Run `python -m nox -s integration` or matrix sessions only when the change is cross-cutting, when preparing a release, or when explicitly requested.
 
 ## Coding Style & Naming Conventions
 
