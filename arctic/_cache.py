@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from pymongo.errors import CollectionInvalid, OperationFailure
 
@@ -15,6 +15,10 @@ meta_db.cache_settings.insertOne({"type": "cache", "enabled": true, "cache_expir
 meta_db.cache_settings.find(): { "_id" : ObjectId("5cd5388b9fddfbe6e968f11b"), "type": "cache", "enabled" : false, "cache_expiry" : 600 }
 """
 DEFAULT_CACHE_EXPIRY = 3600
+
+
+def _utcnow():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Cache:
@@ -67,7 +71,7 @@ class Cache:
             cache_settings = self._get_cache_settings()
             expiry_period = cache_settings['cache_expiry'] if cache_settings else DEFAULT_CACHE_EXPIRY
 
-        return datetime.utcnow() < cached_data['date'] + timedelta(seconds=expiry_period)
+        return _utcnow() < cached_data['date'] + timedelta(seconds=expiry_period)
 
     def get(self, key, newer_than_secs=None):
         """
@@ -96,7 +100,7 @@ class Cache:
         try:
             self._cachecol.update_one(
                 {"type": key},
-                {"$set": {"type": key, "date": datetime.utcnow(), "data": data}},
+                {"$set": {"type": key, "date": _utcnow(), "data": data}},
                 upsert=True
             )
         except OperationFailure as op:
@@ -109,7 +113,7 @@ class Cache:
                 {
                     # Add to set will not add the same library again to the list unlike set.
                     '$addToSet': {'data': append_data},
-                    '$setOnInsert': {'type': key, 'date': datetime.utcnow()}
+                    '$setOnInsert': {'type': key, 'date': _utcnow()}
                 },
                 upsert=True
             )
@@ -118,7 +122,7 @@ class Cache:
 
     def delete_item_from_key(self, key, item):
         try:
-            self._cachecol.update(
+            self._cachecol.update_one(
                 {'type': key},
                 {"$pull": {"data": item}}
             )

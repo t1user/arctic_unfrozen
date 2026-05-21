@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime as dt
+from datetime import datetime as dt, timezone
 
 import bson
 import pandas as pd
@@ -13,6 +13,10 @@ from ..exceptions import NoDataFoundException
 logger = logging.getLogger(__name__)
 
 METADATA_STORE_TYPE = 'MetadataStore'
+
+
+def _utcnow():
+    return dt.now(timezone.utc).replace(tzinfo=None)
 
 
 class MetadataStore(BSONStore):
@@ -209,10 +213,10 @@ class MetadataStore(BSONStore):
             to be persisted
         start_time : `datetime.datetime`
             when metadata becomes effective
-            Default: datetime.datetime.utcnow()
+            Default: current UTC time
         """
         if start_time is None:
-            start_time = dt.utcnow()
+            start_time = _utcnow()
         old_metadata = self.find_one({'symbol': symbol}, sort=[('start_time', pymongo.DESCENDING)])
         if old_metadata is not None:
             if old_metadata['start_time'] >= start_time:

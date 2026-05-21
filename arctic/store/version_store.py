@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime as dt, timedelta
+from datetime import datetime as dt, timedelta, timezone
 
 import bson
 import pymongo
@@ -23,6 +23,10 @@ VERSION_STORE_TYPE = 'VersionStore'
 _TYPE_HANDLERS = []
 ARCTIC_VERSION = None
 ARCTIC_VERSION_NUMERICAL = None
+
+
+def _utcnow():
+    return dt.now(timezone.utc).replace(tzinfo=None)
 
 
 def register_version(version, numerical):
@@ -821,7 +825,7 @@ class VersionStore(object):
                  # Not snapshotted
                  '$or': [{'parent': {'$exists': False}}, {'parent': []}],
                  # At least 'keep_mins' old
-                 '_id': {'$lt': bson.ObjectId.from_datetime(dt.utcnow()
+                 '_id': {'$lt': bson.ObjectId.from_datetime(_utcnow()
                                                             # Add one second as the ObjectId
                                                             # str has random fuzz
                                                             + timedelta(seconds=1)
