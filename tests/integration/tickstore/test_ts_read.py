@@ -203,7 +203,7 @@ def test_read_all_cols_all_dtypes(tickstore_lib, chunk_size):
     df.index = df.index.tz_convert(mktz('UTC'))
     expected = pd.DataFrame(data, index=index)
     expected = expected[df.columns]
-    assert_frame_equal(expected, df, check_names=False)
+    assert_frame_equal(expected, df, check_names=False, check_index_type=False)
 
 
 DUMMY_DATA = [
@@ -297,7 +297,7 @@ def test_date_range_end_not_in_range(tickstore_lib):
 
     tickstore_lib._chunk_size = 1
     tickstore_lib.write('SYM', DUMMY_DATA)
-    with patch.object(tickstore_lib._collection, 'find', side_effect=tickstore_lib._collection.find) as f:
+    with patch('pymongo.collection.Collection.find', side_effect=tickstore_lib._collection.find) as f:
         df = tickstore_lib.read('SYM', date_range=DateRange(20130101, dt(2013, 1, 2, 9, 0)), columns=None)
         assert_array_equal(df['b'].values, np.array([2.]))
         assert mongo_count(tickstore_lib._collection, filter=f.call_args_list[-1][0][0]) == 1

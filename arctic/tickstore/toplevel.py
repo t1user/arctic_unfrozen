@@ -25,6 +25,14 @@ YEAR_REGEX = re.compile(r"\d{4}")
 end_time_min = (dt.combine(date.today(), time.min) - timedelta(milliseconds=1)).time()
 
 
+def _expand_date_range_end(date_range):
+    end = getattr(date_range, 'end', None)
+    if end and end.time() == time.min:
+        return DateRange(getattr(date_range, 'start', None), end + timedelta(days=1) - timedelta(milliseconds=1),
+                         getattr(date_range, 'interval', CLOSED_CLOSED))
+    return date_range
+
+
 class DictList(object):
     def __init__(self, lst, key):
         self.lst = lst
@@ -103,15 +111,15 @@ overlapping libraries: {}""".format(library_name, [lib.library for lib in librar
                                     {'$set': {'start': start, 'end': end}}, upsert=True)
 
     def read(self, symbol, date_range, columns=None, include_images=False):
-        if (date_range.start and date_range.start.tzinfo is None) or \
-                (date_range.end and date_range.end.tzinfo is None):
-            start = date_range.start
-            end = date_range.end
+        date_range = _expand_date_range_end(date_range)
+        start = getattr(date_range, 'start', None)
+        end = getattr(date_range, 'end', None)
+        if (start and start.tzinfo is None) or (end and end.tzinfo is None):
             if start and start.tzinfo is None:
                 start = start.replace(tzinfo=mktz('UTC'))
             if end and end.tzinfo is None:
                 end = end.replace(tzinfo=mktz('UTC'))
-            date_range = DateRange(start, end, date_range.interval)
+            date_range = DateRange(start, end, getattr(date_range, 'interval', CLOSED_CLOSED))
         libraries = self._get_libraries(date_range)
         dfs = []
         for lib in libraries:

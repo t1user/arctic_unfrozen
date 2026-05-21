@@ -37,6 +37,14 @@ except ImportError as e:
 PD_VER = pd.__version__
 logger = logging.getLogger(__name__)
 
+
+def _expand_date_range_end(date_range):
+    end = getattr(date_range, 'end', None)
+    if end and end.time() == dt.min.time():
+        return DateRange(getattr(date_range, 'start', None), end + timedelta(days=1) - timedelta(milliseconds=1),
+                         getattr(date_range, 'interval', CLOSED_CLOSED))
+    return date_range
+
 # Example-Schema:
 # --------------
 # {ID: ObjectId('52b1d39eed5066ab5e87a56d'),
@@ -293,7 +301,8 @@ class TickStore(object):
 
         multiple_symbols = not isinstance(symbol, str)
 
-        date_range = to_pandas_closed_closed(date_range)
+        requested_date_range = date_range
+        date_range = _expand_date_range_end(to_pandas_closed_closed(date_range))
         query = self._symbol_query(symbol)
         query.update(self._mongo_date_range_query(symbol, date_range))
 
@@ -377,6 +386,12 @@ class TickStore(object):
         if date_range:
             # FIXME: support DateRange.interval...
             rtn = rtn.loc[date_range.start:date_range.end]
+            if requested_date_range and requested_date_range.start and \
+                    requested_date_range.start.time() == dt.min.time() and requested_date_range.startopen:
+                rtn = rtn[rtn.index.date > requested_date_range.start.date()]
+            if requested_date_range and requested_date_range.end and \
+                    requested_date_range.end.time() == dt.min.time() and requested_date_range.endopen:
+                rtn = rtn[rtn.index.date < requested_date_range.end.date()]
         return rtn
 
     def read_metadata(self, symbol):
