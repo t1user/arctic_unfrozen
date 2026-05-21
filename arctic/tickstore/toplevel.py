@@ -103,6 +103,15 @@ overlapping libraries: {}""".format(library_name, [lib.library for lib in librar
                                     {'$set': {'start': start, 'end': end}}, upsert=True)
 
     def read(self, symbol, date_range, columns=None, include_images=False):
+        if (date_range.start and date_range.start.tzinfo is None) or \
+                (date_range.end and date_range.end.tzinfo is None):
+            start = date_range.start
+            end = date_range.end
+            if start and start.tzinfo is None:
+                start = start.replace(tzinfo=mktz('UTC'))
+            if end and end.tzinfo is None:
+                end = end.replace(tzinfo=mktz('UTC'))
+            date_range = DateRange(start, end, date_range.interval)
         libraries = self._get_libraries(date_range)
         dfs = []
         for lib in libraries:
@@ -197,8 +206,8 @@ overlapping libraries: {}""".format(library_name, [lib.library for lib in librar
         if not (date_range.start and date_range.end):
             raise Exception("The date range {0} must contain a start and end date".format(date_range))
 
-        start = date_range.start if date_range.start.tzinfo is not None else date_range.start.replace(tzinfo=mktz())
-        end = date_range.end if date_range.end.tzinfo is not None else date_range.end.replace(tzinfo=mktz())
+        start = date_range.start if date_range.start.tzinfo is not None else date_range.start.replace(tzinfo=mktz('UTC'))
+        end = date_range.end if date_range.end.tzinfo is not None else date_range.end.replace(tzinfo=mktz('UTC'))
         query = {'$or': [{'start': {'$lte': start}, 'end': {'$gte': start}},
                          {'start': {'$gte': start}, 'end': {'$lte': end}},
                          {'start': {'$lte': end}, 'end': {'$gte': end}}]}

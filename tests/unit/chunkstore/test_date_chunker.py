@@ -86,6 +86,24 @@ def test_to_chunks_exceptions():
     assert('Unknown freqstr' in str(e.value) or 'Invalid frequency' in str(e.value))
 
 
+def test_to_chunks_accepts_legacy_yearly_frequency_alias():
+    c = DateChunker()
+    df = DataFrame(
+        data={'data': [1, 2, 3]},
+        index=pd.DatetimeIndex([dt(2016, 1, 1), dt(2016, 2, 1), dt(2017, 1, 1)], name='date'),
+    )
+
+    chunks = list(c.to_chunks(df, 'A'))
+
+    assert len(chunks) == 2
+    assert chunks[0][0] == dt(2016, 1, 1)
+    assert chunks[0][1] == dt(2016, 12, 31, 23, 59, 59, 999999)
+    assert chunks[0][2] == 'A'
+    assert chunks[1][0] == dt(2017, 1, 1)
+    assert chunks[1][1] == dt(2017, 12, 31, 23, 59, 59, 999999)
+    assert chunks[1][2] == 'A'
+
+
 def test_exclude():
     c = DateChunker()
     df = DataFrame(data={'data': [1, 2, 3]},

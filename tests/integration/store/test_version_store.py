@@ -364,7 +364,7 @@ def test_append_corrupted_new_version(library, fw_pointers_cfg):
 
         # Should still be able to append new data
         library.append(symbol, to_append_2, upsert=True)
-        assert library.read(symbol).data['near'][-1] == 40.
+        assert library.read(symbol).data['near'].iloc[-1] == 40.
         assert len(library.read(symbol).data) == len(ts1) + 1
 
 
@@ -959,15 +959,15 @@ def test_prunes_doesnt_prune_snapshots_fully_different_tss(library, fw_pointers_
 def test_prunes_previous_version_append_interaction(library, fw_pointers_cfg):
     with FwPointersCtx(fw_pointers_cfg):
         ts = ts1
-        ts2 = ts1.append(pd.DataFrame(index=[ts.index[-1] + dtd(days=1),
-                                             ts.index[-1] + dtd(days=2), ],
-                                      data=[3.7, 3.8],
-                                      columns=['near']))
+        ts2 = pd.concat([ts1, pd.DataFrame(index=[ts.index[-1] + dtd(days=1),
+                                                  ts.index[-1] + dtd(days=2), ],
+                                           data=[3.7, 3.8],
+                                           columns=['near'])])
         ts2.index.name = ts1.index.name
-        ts3 = ts.append(pd.DataFrame(index=[ts2.index[-1] + dtd(days=1),
-                                            ts2.index[-1] + dtd(days=2)],
-                                     data=[4.8, 4.9],
-                                     columns=['near']))
+        ts3 = pd.concat([ts, pd.DataFrame(index=[ts2.index[-1] + dtd(days=1),
+                                                 ts2.index[-1] + dtd(days=2)],
+                                          data=[4.8, 4.9],
+                                          columns=['near'])])
         ts3.index.name = ts1.index.name
         ts4 = ts
         ts5 = ts2
@@ -1150,7 +1150,7 @@ def test_append_after_empty(library, fw_pointers_cfg):
 def _rnd_df(nrows, ncols):
     ret_df = pd.DataFrame(np.random.randn(nrows, ncols),
                           index=pd.date_range('20170101',
-                          periods=nrows, freq='S'),
+                          periods=nrows, freq='s'),
                           columns=[chr(i) for i in range(ord('a'), ord('a')+ncols)])
     ret_df.index.name = 'index'
     return ret_df
@@ -1193,7 +1193,7 @@ def test_write_metadata_followed_by_append(library, fw_pointers_cfg):
             library._prune_previous_versions(symbol, 0)
 
             v = library.read(symbol)
-            assert_frame_equal_(v.data, mydf_a.append(mydf_b), check_freq=False)
+            assert_frame_equal_(v.data, pd.concat([mydf_a, mydf_b]), check_freq=False)
             assert v.metadata == {'field_c': 1}
             assert library._read_metadata(symbol).get('version') == 3
             assert_frame_equal_(library.read(symbol, as_of=1).data, mydf_a, check_freq=False)
@@ -1221,7 +1221,7 @@ def test_write_metadata_after_append(library, fw_pointers_cfg):
             library.append(symbol, data=mydf_b, metadata={'field_a': 2})  # creates version 2
             library.write_metadata(symbol, metadata={'field_b': 1})  # creates version 3
             v = library.read(symbol)
-            assert_frame_equal_(v.data, mydf_a.append(mydf_b), check_freq=False)
+            assert_frame_equal_(v.data, pd.concat([mydf_a, mydf_b]), check_freq=False)
             assert v.metadata == {'field_b': 1}
             assert library._read_metadata(symbol).get('version') == 3
 
@@ -1350,7 +1350,7 @@ def test_restore_version_followed_by_append(library, fw_pointers_cfg):
             time.sleep(2)
 
             item = library.read(symbol)
-            assert_frame_equal_(item.data, mydf_a.append(mydf_c), check_freq=False)
+            assert_frame_equal_(item.data, pd.concat([mydf_a, mydf_c]), check_freq=False)
             assert item.metadata == {'field_c': 3}
             assert library._read_metadata(symbol).get('version') == 4
 

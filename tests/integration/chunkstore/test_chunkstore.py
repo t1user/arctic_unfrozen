@@ -996,11 +996,11 @@ def test_iterators(chunkstore_lib):
 
     for x, d in enumerate(chunkstore_lib.iterator('test_df')):
         assert(len(d) == 1)
-        assert(d.data0[0] == x)
+        assert(d.data0.iloc[0] == x)
 
     for x, d in enumerate(chunkstore_lib.reverse_iterator('test_df')):
         assert(len(d) == 1)
-        assert(d.data0[0] == len(df) - x - 1)
+        assert(d.data0.iloc[0] == len(df) - x - 1)
 
     dr = DateRange(dt(2016, 1, 2), dt(2016, 1, 2))
     assert(len(list(chunkstore_lib.iterator('test_df', chunk_range=dr))) == 1)

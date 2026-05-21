@@ -43,7 +43,9 @@ def test_read(tickstore_lib):
     assert_array_equal(df['ASK'].values, np.array([1545.25, np.nan]))
     assert_array_equal(df['BID'].values, np.array([1545, np.nan]))
     assert_array_equal(df['PRICE'].values, np.array([1545, 1543.75]))
-    assert_array_equal(df.index.values.astype('object'), np.array([1185076787070000000, 1185141600600000000]))
+    assert_array_equal(
+        df.index.to_numpy(dtype='datetime64[ns]').astype('int64'),
+        np.array([1185076787070000000, 1185141600600000000]))
     assert tickstore_lib._collection.find_one()['c'] == 2
     assert df.index.tzinfo == mktz()
 
@@ -156,7 +158,9 @@ def test_read_multiple_symbols(tickstore_lib):
     assert_array_equal(df['ASK'].values, np.array([1545.25, np.nan]))
     assert_array_equal(df['BID'].values, np.array([1545, np.nan]))
     assert_array_equal(df['PRICE'].values, np.array([1545, 1543.75]))
-    assert_array_equal(df.index.values.astype('object'), np.array([1185076787070000000, 1185141600600000000]))
+    assert_array_equal(
+        df.index.to_numpy(dtype='datetime64[ns]').astype('int64'),
+        np.array([1185076787070000000, 1185141600600000000]))
     assert tickstore_lib._collection.find_one()['c'] == 1
 
 
@@ -576,8 +580,8 @@ def test_read_longs(tickstore_lib):
     tickstore_lib.write('SYM', DUMMY_DATA)
     tickstore_lib.read('SYM', columns=None)
     read = tickstore_lib.read('SYM', columns=None, date_range=DateRange(dt(2013, 6, 1), dt(2013, 6, 2)))
-    assert read['a'][0] == 1
-    assert np.isnan(read['b'][0])
+    assert read['a'].iloc[0] == 1
+    assert np.isnan(read['b'].iloc[0])
 
 
 def test_read_with_image(tickstore_lib):
@@ -607,7 +611,7 @@ def test_read_with_image(tickstore_lib):
     dr = DateRange(dt(2013, 1, 1), dt(2013, 1, 2))
     # tickstore_lib.read('SYM', columns=None)
     df = tickstore_lib.read('SYM', columns=None, date_range=dr)
-    assert df['a'][0] == 1
+    assert df['a'].iloc[0] == 1
 
     # Read with the image as well - all columns
     df = tickstore_lib.read('SYM', columns=None, date_range=dr, include_images=True)

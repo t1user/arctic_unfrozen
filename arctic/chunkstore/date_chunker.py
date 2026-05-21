@@ -7,6 +7,12 @@ from ._chunker import Chunker, START, END
 class DateChunker(Chunker):
     TYPE = 'date'
 
+    @staticmethod
+    def _pandas_period_frequency(chunk_size):
+        if isinstance(chunk_size, str) and chunk_size.startswith('A'):
+            return 'Y' + chunk_size[1:]
+        return chunk_size
+
     def to_chunks(self, df, chunk_size='D', func=None, **kwargs):
         """
         chunks the dataframe/series by dates
@@ -42,7 +48,7 @@ class DateChunker(Chunker):
         else:
             raise Exception("Data must be datetime indexed or have a column named 'date'")
 
-        period_obj = dates.to_period(chunk_size)
+        period_obj = dates.to_period(self._pandas_period_frequency(chunk_size))
         period_obj_reduced = period_obj.drop_duplicates()
         count = 0
         for _, g in df.groupby(period_obj._data):

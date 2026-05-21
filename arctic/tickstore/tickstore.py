@@ -356,7 +356,12 @@ class TickStore(object):
             mgr = _arrays_to_mgr(arrays, columns, index, columns, dtype=None)
         else:
             # 4th argument removed + new argument typ is mandatory
-            mgr = _arrays_to_mgr(arrays, columns, index, dtype=None, typ="array")
+            try:
+                mgr = _arrays_to_mgr(arrays, columns, index, dtype=None, typ="array")
+            except TypeError as e:
+                if "unexpected keyword argument 'typ'" not in str(e):
+                    raise
+                mgr = _arrays_to_mgr(arrays, columns, index, dtype=None)
 
         rtn = pd.DataFrame(mgr)
         # Present data in the user's default TimeZone

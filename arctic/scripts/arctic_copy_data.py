@@ -4,6 +4,8 @@ import os
 import pwd
 from multiprocessing import Pool
 
+import pandas as pd
+
 from arctic.decorators import _get_host
 from arctic.store.audit import ArcticTransaction
 from .utils import setup_logging
@@ -48,7 +50,7 @@ def copy_symbols_helper(src, dest, log, force, splice):
                         preserve_end = preserve_end.replace(tzinfo=None)
                     before = original_data.loc[:preserve_start]
                     after = original_data[preserve_end:]
-                    new_data = before.append(new_data).append(after)
+                    new_data = pd.concat([before, new_data, after])
 
                 mt.write(symbol, new_data, metadata=version.metadata)
     return _copy_symbol

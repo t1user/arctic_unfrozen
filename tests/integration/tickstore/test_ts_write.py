@@ -69,7 +69,7 @@ def test_ts_write_pandas(tickstore_lib):
 
     data = tickstore_lib.read('SYM', columns=None)
     assert data.index[0] == dt(2013, 1, 1, tzinfo=mktz('Europe/London'))
-    assert data.a[0] == 1
+    assert data.a.iloc[0] == 1
     tickstore_lib.delete('SYM')
     tickstore_lib.write('SYM', data)
 
@@ -83,7 +83,7 @@ def test_ts_write_named_col(tickstore_lib):
 
     data = tickstore_lib.read('SYM')
     assert data.index[0] == dt(2013, 1, 1, tzinfo=mktz('Europe/London'))
-    assert data.a[0] == 1
+    assert data.a.iloc[0] == 1
     assert(data.index.name is None)
     data.index.name = 'IndexName'
 

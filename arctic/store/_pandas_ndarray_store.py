@@ -5,7 +5,6 @@ import numpy as np
 from bson.binary import Binary
 from pandas import DataFrame, Series
 
-from arctic._util import NP_OBJECT_DTYPE
 from arctic.serialization.numpy_records import SeriesSerializer, DataFrameSerializer
 from ._ndarray_store import NdarrayStore
 from .._compression import compress, decompress
@@ -18,6 +17,10 @@ log = logging.getLogger(__name__)
 DTN64_DTYPE = 'datetime64[ns]'
 
 INDEX_DTYPE = [('datetime', DTN64_DTYPE), ('index', 'i8')]
+
+
+def _dtype_needs_serializability_check(dtype):
+    return not hasattr(dtype, 'hasobject') or dtype.hasobject
 
 
 class PandasStore(NdarrayStore):
@@ -65,7 +68,7 @@ class PandasStore(NdarrayStore):
         # TODO: Handle multi-indexes
         names = recarr.dtype.names
         for name in names:
-            if recarr[name].dtype == DTN64_DTYPE:
+            if np.issubdtype(recarr[name].dtype, np.datetime64):
                 return name
         return None
 
@@ -152,7 +155,7 @@ class PandasSeriesStore(PandasStore):
     def can_write(self, version, symbol, data):
         if self.can_write_type(data):
             # Series has always a single-column
-            if data.dtype is NP_OBJECT_DTYPE or data.index.dtype is NP_OBJECT_DTYPE:
+            if _dtype_needs_serializability_check(data.dtype) or _dtype_needs_serializability_check(data.index.dtype):
                 return self.SERIALIZER.can_convert_to_records_without_objects(data, symbol)
             return True
         return False
@@ -185,7 +188,8 @@ class PandasDataFrameStore(PandasStore):
 
     def can_write(self, version, symbol, data):
         if self.can_write_type(data):
-            if NP_OBJECT_DTYPE in data.dtypes.values or data.index.dtype is NP_OBJECT_DTYPE:
+            if any(_dtype_needs_serializability_check(dtype) for dtype in data.dtypes.values) or \
+                    _dtype_needs_serializability_check(data.index.dtype):
                 return self.SERIALIZER.can_convert_to_records_without_objects(data, symbol)
             return True
         return False
@@ -220,7 +224,8 @@ class PandasPanelStore(PandasDataFrameStore):
     def can_write(self, version, symbol, data):
         if self.can_write_type(data):
             frame = data.to_frame(filter_observations=False)
-            if NP_OBJECT_DTYPE in frame.dtypes.values or (hasattr(data, 'index') and data.index.dtype is NP_OBJECT_DTYPE):
+            if any(_dtype_needs_serializability_check(dtype) for dtype in frame.dtypes.values) or \
+                    (hasattr(data, 'index') and _dtype_needs_serializability_check(data.index.dtype)):
                 return self.SERIALIZER.can_convert_to_records_without_objects(frame, symbol)
             return True
         return False
