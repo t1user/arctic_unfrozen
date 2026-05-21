@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 
-from pymongo.errors import OperationFailure
+from pymongo.errors import CollectionInvalid, OperationFailure
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,8 @@ class Cache:
         try:
             if cache_col not in self._cachedb.list_collection_names():
                 self._cachedb.create_collection(cache_col).create_index("date", expireAfterSeconds=cache_expiry)
+        except CollectionInvalid as op:
+            logging.debug("Cache collection was created concurrently: %s", op)
         except OperationFailure as op:
             logging.debug("This is fine if you are not admin. The collection should already be created for you: %s", op)
 
