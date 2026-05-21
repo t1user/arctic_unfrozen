@@ -90,7 +90,7 @@ def multi_index_df_from_arrs(index_headers, index_arrs, data_dict):
     parsed_indexes = []
     for index in index_arrs:
         try:
-            parsed_indexes.append(pandas.to_datetime(index))
+            parsed_indexes.append(pandas.to_datetime(index, format='mixed'))
         except ValueError:
             parsed_indexes.append(index)
 

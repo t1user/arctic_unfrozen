@@ -34,8 +34,8 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
 - Define a repeatable local MongoDB setup for integration testing.
 - Keep MongoDB-backed integration smoke tests blocking in CI across the
   supported Python matrix.
-- Run the full integration suite as a non-blocking diagnostic matrix until the
-  remaining pandas/numpy/pymongo compatibility failures are fixed.
+- Keep the full integration suite blocking in CI now that it is green across
+  supported Python versions.
 
 ## 5. Improve Types Gradually
 

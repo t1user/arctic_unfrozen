@@ -87,7 +87,6 @@ jobs:
   integration-full:
     name: Full Integration / Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
-    continue-on-error: true
     timeout-minutes: 15
     strategy:
       fail-fast: false

@@ -1,6 +1,6 @@
 import sys
-from distutils.version import LooseVersion
 from os import path
+from pandas.util.version import Version
 
 import pandas as pd
 import pytest
@@ -14,7 +14,7 @@ from arctic.exceptions import UnsupportedPickleStoreVersion
 from arctic.store._pickle_store import PickleStore
 from arctic.store._version_store_utils import checksum
 
-PANDAS_VERSION = LooseVersion(pd.__version__)
+PANDAS_VERSION = Version(pd.__version__)
 
 
 def test_write():
@@ -98,7 +98,7 @@ def test_read_backward_compatibility():
     fname = path.join(path.dirname(__file__), "data", "test-data.pkl")
 
     # For newer versions; verify that unpickling fails when using cPickle
-    if PANDAS_VERSION >= LooseVersion("0.16.1"):
+    if PANDAS_VERSION >= Version("0.16.1"):
         if sys.version_info[0] >= 3:
             with pytest.raises(UnicodeDecodeError), open(fname) as fh:
                 pickle.load(fh)

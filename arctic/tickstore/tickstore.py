@@ -12,12 +12,6 @@ from pymongo import ReadPreference
 from pymongo.errors import OperationFailure
 
 try:
-    from pandas.core.frame import _arrays_to_mgr
-except ImportError:
-    # Deprecated since pandas 0.23.4
-    from pandas.core.internals.construction import arrays_to_mgr as _arrays_to_mgr
-
-try:
     from pandas.api.types import infer_dtype
 except ImportError:
     from pandas.lib import infer_dtype
@@ -361,18 +355,7 @@ class TickStore(object):
 
         t = (dt.now() - perf_start).total_seconds()
         logger.info("Got data in %s secs, creating DataFrame..." % t)
-        if pd.__version__.startswith("0.") or pd.__version__.startswith("1.0"):
-            mgr = _arrays_to_mgr(arrays, columns, index, columns, dtype=None)
-        else:
-            # 4th argument removed + new argument typ is mandatory
-            try:
-                mgr = _arrays_to_mgr(arrays, columns, index, dtype=None, typ="array")
-            except TypeError as e:
-                if "unexpected keyword argument 'typ'" not in str(e):
-                    raise
-                mgr = _arrays_to_mgr(arrays, columns, index, dtype=None)
-
-        rtn = pd.DataFrame(mgr)
+        rtn = pd.DataFrame(dict(zip(columns, arrays)), index=index, columns=columns)
         # Present data in the user's default TimeZone
         rtn.index = rtn.index.tz_convert(mktz())
 

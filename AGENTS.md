@@ -48,7 +48,7 @@ Prefer minimal, targeted changes that preserve the existing architecture. Follow
 
 Use `pytest`. Put fast isolated tests in `tests/unit/` and MongoDB-backed or end-to-end coverage in `tests/integration/`. Name test files `test_*.py` and test functions `test_*`. Add focused regression tests near the affected module, for example `tests/unit/chunkstore/` for `arctic/chunkstore/` changes. If an integration test needs external services, state that clearly in the PR.
 
-GitHub Actions currently runs `nox` unit and integration-smoke sessions on Python 3.10 through 3.13. It also runs the full MongoDB-backed integration suite as a non-blocking diagnostic matrix because the legacy integration suite is not yet green on modern dependencies. MongoDB jobs use MongoDB 4.4.18 through a GitHub Actions service container.
+GitHub Actions currently runs `nox` unit, integration-smoke, and full MongoDB-backed integration sessions on Python 3.10 through 3.13. MongoDB jobs use MongoDB 4.4.18 through a GitHub Actions service container. Full integration is blocking in CI, so keep local verification focused before pushing.
 
 Benchmarking is deferred to a later stage. The existing ASV and manual benchmark scripts in `benchmarks/` are stale, partly MongoDB-backed, and not suitable for required CI until they are modernized for the supported Python versions and isolated test data.
 
