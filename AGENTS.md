@@ -4,6 +4,8 @@
 
 Project's purpose is to revive this long unmaintained repo. The target is to make it use latest version of dependencies including current version of python, mongo, pymongo, pandas and numpy. Supported Python versions are currently 3.10 through 3.13. It's paramount not to break any functionality and keep existing interface. Subsequently new functionality and additional interface points may be added but it should be done while keeping full backwards compatibility. Don't make sweeping changes all at once, focus on the requested change. If warranted you may suggest next steps to achieve the overall purpose.
 
+Use `PLAN.md` as the durable roadmap for sequencing modernization work. Keep it updated when priorities, supported versions, or CI strategy change.
+
 ## Target Structure
 
 All config in pyproject.toml, remove other config files to the extend possible
