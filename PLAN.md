@@ -10,14 +10,13 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
 - Maintain GitHub Actions for Python 3.10 through 3.13.
 - Keep `python -m pytest tests/unit` passing before broadening scope.
 - Prefer small regression tests near the touched module.
-- Add local matrix tooling, such as `tox` or `nox`, so contributors can run the
-  CI-equivalent checks before pushing.
+- Use `nox` so contributors can run CI-equivalent checks before pushing.
 
 ## 2. Consolidate Tooling Configuration
 
 - Move active project configuration into `pyproject.toml` where practical.
 - Retire stale CI/config files once their behavior is replaced or confirmed
-  obsolete, especially legacy CircleCI.
+  obsolete. Legacy CircleCI has been replaced by GitHub Actions.
 - Keep formatting changes narrow; avoid repository-wide reformatting until the
   compatibility work is stable.
 
@@ -33,8 +32,10 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
 
 - Separate fast unit tests from MongoDB-backed integration tests.
 - Define a repeatable local MongoDB setup for integration testing.
-- Add an optional CI job for integration tests only after it is reliable and not
-  disruptive to routine unit-test feedback.
+- Keep MongoDB-backed integration smoke tests blocking in CI across the
+  supported Python matrix.
+- Run the full integration suite as a non-blocking diagnostic matrix until the
+  remaining pandas/numpy/pymongo compatibility failures are fixed.
 
 ## 5. Improve Types Gradually
 

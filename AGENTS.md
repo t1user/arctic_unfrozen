@@ -20,6 +20,9 @@ This repository contains the legacy `arctic` Python package, now in maintenance 
 
 - `python -m pip install -e .[test,dev]`: install Arctic plus test and development tooling into the active virtualenv.
 - `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 through 3.13.
+- `python -m nox -s unit`: run the unit-test CI session on the active Python.
+- `python -m nox -s integration`: run the MongoDB-backed integration-test CI session on the active Python. Without `ARCTIC_TEST_MONGO_HOST`, this starts a local `mongod` if available.
+- `python -m nox -s unit_matrix integration_matrix`: run the full local Python matrix when Python 3.10 through 3.13 interpreters are installed.
 - `python -m pytest tests/unit/test_auth.py`: run a focused test file or directory.
 - `pycodestyle arctic tests`: check style using the ignore rules in `setup.cfg`.
 - `mkdocs build`: build documentation locally when docs are changed.
@@ -34,7 +37,7 @@ Prefer minimal, targeted changes that preserve the existing architecture. Follow
 
 Use `pytest`. Put fast isolated tests in `tests/unit/` and MongoDB-backed or end-to-end coverage in `tests/integration/`. Name test files `test_*.py` and test functions `test_*`. Add focused regression tests near the affected module, for example `tests/unit/chunkstore/` for `arctic/chunkstore/` changes. If an integration test needs external services, state that clearly in the PR.
 
-GitHub Actions currently runs `python -m pytest tests/unit` on Python 3.10 through 3.13. Keep this baseline green before expanding the matrix or adding integration-test jobs.
+GitHub Actions currently runs `nox` unit and integration-smoke sessions on Python 3.10 through 3.13. It also runs the full MongoDB-backed integration suite as a non-blocking diagnostic matrix because the legacy integration suite is not yet green on modern dependencies. MongoDB jobs use MongoDB 4.4.18 through a GitHub Actions service container.
 
 Benchmarking is deferred to a later stage. The existing ASV and manual benchmark scripts in `benchmarks/` are stale, partly MongoDB-backed, and not suitable for required CI until they are modernized for the supported Python versions and isolated test data.
 

@@ -1,9 +1,17 @@
 import base64
 import getpass
 import logging
+import os
+import shutil
+import socket
+import subprocess
+import time
+from dataclasses import dataclass
 
 import bson
 import pytest as pytest
+from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError
 
 from .. import arctic as m
 from ..chunkstore.chunkstore import CHUNK_STORE_TYPE
@@ -11,6 +19,98 @@ from ..store.bitemporal_store import BitemporalStore
 from ..tickstore.tickstore import TICK_STORE_TYPE
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class MongoServer:
+    hostname: str
+    port: int
+    api: MongoClient
+
+
+SYSTEM_DATABASES = {"admin", "config", "local"}
+
+
+def _free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
+def _connect_mongo(host):
+    client = MongoClient(host, serverSelectionTimeoutMS=500)
+    client.admin.command("ping")
+    hostname, port = client.address
+    return MongoServer(hostname=hostname, port=port, api=client)
+
+
+def _drop_test_databases(client):
+    for database_name in client.list_database_names():
+        if database_name not in SYSTEM_DATABASES:
+            client.drop_database(database_name)
+
+
+@pytest.fixture(scope="session")
+def _mongo_server(tmp_path_factory):
+    host = os.environ.get("ARCTIC_TEST_MONGO_HOST")
+    if host:
+        server = _connect_mongo(host)
+        yield server
+        server.api.close()
+        return
+
+    mongod = shutil.which("mongod")
+    if mongod is None:
+        pytest.skip("mongod is required for integration tests")
+
+    port = _free_port()
+    dbpath = tmp_path_factory.mktemp("mongodb")
+    logpath = dbpath / "mongod.log"
+    process = subprocess.Popen(
+        [
+            mongod,
+            "--bind_ip",
+            "127.0.0.1",
+            "--port",
+            str(port),
+            "--dbpath",
+            str(dbpath),
+            "--logpath",
+            str(logpath),
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+    )
+
+    server = None
+    try:
+        for _ in range(100):
+            if process.poll() is not None:
+                break
+            try:
+                server = _connect_mongo(f"127.0.0.1:{port}")
+                break
+            except ServerSelectionTimeoutError:
+                time.sleep(0.1)
+        if server is None:
+            raise RuntimeError(f"mongod did not start; see {logpath}")
+        yield server
+    finally:
+        if server is not None:
+            server.api.close()
+        process.terminate()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+
+
+@pytest.fixture(scope="function")
+def mongo_server(_mongo_server):
+    _drop_test_databases(_mongo_server.api)
+    yield _mongo_server
+    _drop_test_databases(_mongo_server.api)
 
 
 @pytest.fixture(scope="function")

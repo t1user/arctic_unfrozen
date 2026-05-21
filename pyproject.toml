@@ -58,6 +58,7 @@ dev = [
     "black",
     "flake8",
     "mypy",
+    "nox",
 ]
 
 [project.urls]
@@ -96,6 +97,7 @@ exclude = [
     ".mypy_cache",
     ".pytest_cache",
     ".ruff_cache",
+    ".nox",
     ".tox",
     ".venv",
     "build",
