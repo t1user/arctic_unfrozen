@@ -1,5 +1,7 @@
 import logging
 from datetime import datetime as dt, timezone
+from collections.abc import Iterable
+from typing import Any
 
 import bson
 import pandas as pd
@@ -15,7 +17,7 @@ logger = logging.getLogger(__name__)
 METADATA_STORE_TYPE = 'MetadataStore'
 
 
-def _utcnow():
+def _utcnow() -> dt:
     return dt.now(timezone.utc).replace(tzinfo=None)
 
 
@@ -33,36 +35,36 @@ class MetadataStore(BSONStore):
     """
 
     @classmethod
-    def initialize_library(cls, arctic_lib, hashed=True, **kwargs):
+    def initialize_library(cls, arctic_lib: Any, hashed: bool = True, **kwargs: Any) -> None:
         MetadataStore(arctic_lib)._ensure_index()
         BSONStore.initialize_library(arctic_lib, hashed, **kwargs)
 
     @mongo_retry
-    def _ensure_index(self):
+    def _ensure_index(self) -> None:
         self.create_index([('symbol', pymongo.ASCENDING), ('start_time', pymongo.DESCENDING)],
                           unique=True, background=True)
 
-    def __init__(self, arctic_lib):
+    def __init__(self, arctic_lib: Any) -> None:
         self._arctic_lib = arctic_lib
         self._reset()
 
-    def _reset(self):
+    def _reset(self) -> None:
         self._collection = self._arctic_lib.get_top_level_collection().metadata
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict[str, Any]:
         return {'arctic_lib': self._arctic_lib}
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict[str, Any]) -> None:
         return MetadataStore.__init__(self, state['arctic_lib'])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return """<%s at %s>\n%s""" % (self.__class__.__name__, hex(id(self)), indent(str(self._arctic_lib), 4))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
     @mongo_retry
-    def list_symbols(self, regex=None, as_of=None, **kwargs):
+    def list_symbols(self, regex: str | None = None, as_of: dt | None = None, **kwargs: Any) -> list[str]:
         """
          Return the symbols in this library.
 
@@ -86,7 +88,7 @@ class MetadataStore(BSONStore):
             return self.distinct('symbol')
 
         # Index-based query part
-        index_query = {}
+        index_query: dict[str, Any] = {}
         if as_of is not None:
             index_query['start_time'] = {'$lte': as_of}
 
@@ -97,14 +99,14 @@ class MetadataStore(BSONStore):
             index_query['symbol'] = {'$regex': regex or '^'}
 
         # Document query part
-        data_query = {}
+        data_query: dict[str, Any] = {}
         if kwargs:
             for k, v in kwargs.items():
                 data_query['metadata.' + k] = v
 
         # Sort using index, relying on https://docs.mongodb.com/manual/core/aggregation-pipeline-optimization/
-        pipeline = [{'$sort': {'symbol': pymongo.ASCENDING,
-                               'start_time': pymongo.DESCENDING}}]
+        pipeline: list[dict[str, Any]] = [{'$sort': {'symbol': pymongo.ASCENDING,
+                                                     'start_time': pymongo.DESCENDING}}]
 
         # Index-based filter on symbol and start_time
         if index_query:
@@ -121,11 +123,11 @@ class MetadataStore(BSONStore):
         return sorted(r['symbol'] for r in self.aggregate(pipeline))
 
     @mongo_retry
-    def has_symbol(self, symbol):
+    def has_symbol(self, symbol: str) -> bool:
         return self.find_one({'symbol': symbol}) is not None
 
     @mongo_retry
-    def read_history(self, symbol):
+    def read_history(self, symbol: str) -> pd.DataFrame:
         """
         Return all metadata saved for `symbol`
 
@@ -139,15 +141,15 @@ class MetadataStore(BSONStore):
         pandas.DateFrame containing timestamps and metadata entries
         """
         find = self.find({'symbol': symbol}, sort=[('start_time', pymongo.ASCENDING)])
-        times = []
-        entries = []
+        times: list[dt] = []
+        entries: list[Any] = []
         for item in find:
             times.append(item['start_time'])
             entries.append(item['metadata'])
         return pd.DataFrame({symbol: entries}, times)
 
     @mongo_retry
-    def read(self, symbol, as_of=None):
+    def read(self, symbol: str, as_of: dt | None = None) -> Any:
         """
         Return current metadata saved for `symbol`
 
@@ -169,7 +171,7 @@ class MetadataStore(BSONStore):
             res = self.find_one({'symbol': symbol}, sort=[('start_time', pymongo.DESCENDING)])
         return res['metadata'] if res is not None else None
 
-    def write_history(self, collection):
+    def write_history(self, collection: Iterable[pd.DataFrame]) -> None:
         """
         Manually overwrite entire metadata history for symbols in `collection`
 
@@ -182,7 +184,7 @@ class MetadataStore(BSONStore):
                 now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 [pandas.DataFrame({'symbol': [{}]}, [now])]
         """
-        documents = []
+        documents: list[dict[str, Any]] = []
         for dataframe in collection:
             if len(dataframe.columns) != 1:
                 raise ValueError('More than one symbol found in a DataFrame')
@@ -202,7 +204,7 @@ class MetadataStore(BSONStore):
 
         self.insert_many(documents)
 
-    def append(self, symbol, metadata, start_time=None):
+    def append(self, symbol: str, metadata: Any, start_time: dt | None = None) -> dict[str, Any] | None:
         """
         Update metadata entry for `symbol`
 
@@ -226,7 +228,7 @@ class MetadataStore(BSONStore):
             if old_metadata['metadata'] == metadata:
                 return old_metadata
         elif metadata is None:
-            return
+            return None
 
         self.find_one_and_update({'symbol': symbol}, {'$set': {'end_time': start_time}},
                                  sort=[('start_time', pymongo.DESCENDING)])
@@ -236,7 +238,7 @@ class MetadataStore(BSONStore):
         logger.debug('Finished writing metadata for %s', symbol)
         return document
 
-    def prepend(self, symbol, metadata, start_time=None):
+    def prepend(self, symbol: str, metadata: Any, start_time: dt | None = None) -> dict[str, Any] | None:
         """
         Prepend a metadata entry for `symbol`
 
@@ -251,7 +253,7 @@ class MetadataStore(BSONStore):
             Default: datetime.datetime.min
         """
         if metadata is None:
-            return
+            return None
         if start_time is None:
             start_time = dt.min
         old_metadata = self.find_one({'symbol': symbol}, sort=[('start_time', pymongo.ASCENDING)])
@@ -276,7 +278,7 @@ class MetadataStore(BSONStore):
         logger.debug('Finished writing metadata for %s', symbol)
         return document
 
-    def pop(self, symbol):
+    def pop(self, symbol: str) -> dict[str, Any]:
         """
         Delete current metadata of `symbol`
 
@@ -300,7 +302,7 @@ class MetadataStore(BSONStore):
         return last_metadata
 
     @mongo_retry
-    def purge(self, symbol):
+    def purge(self, symbol: str) -> None:
         """
         Delete all metadata of `symbol`
 
