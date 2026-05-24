@@ -153,5 +153,6 @@ module = [
     "arctic.store._pickle_store",
     "arctic.store._version_store_utils",
     "arctic.store.versioned_item",
+    "arctic.tickstore.toplevel",
 ]
 disallow_untyped_defs = true
