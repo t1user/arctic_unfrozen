@@ -114,6 +114,7 @@ warn_unused_ignores = true
 [[tool.mypy.overrides]]
 module = [
     "arctic.chunkstore._chunker",
+    "arctic.chunkstore.date_chunker",
     "arctic.chunkstore.passthrough_chunker",
     "arctic.chunkstore.utils",
     "arctic._cache",
