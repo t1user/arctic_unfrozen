@@ -18,7 +18,7 @@ class AsyncRequest(object):
     def __init__(
         self,
         kind: AsyncRequestType,
-        library: str,
+        library: str | None,
         fun: Callable[..., Any],
         callback: Callable[..., Any] | None,
         *args: Any,
@@ -39,8 +39,8 @@ class AsyncRequest(object):
         # Request's state
         self.future: Future[Any] | None = None
         self.callback = callback
-        self.data = None
-        self.exception = None
+        self.data: Any | None = None
+        self.exception: BaseException | None = None
         self.is_running = False
         self.is_completed = False
 

@@ -120,6 +120,8 @@ module = [
     "arctic.chunkstore.utils",
     "arctic._cache",
     "arctic._compression",
+    "arctic.asynchronous._workers_pool",
+    "arctic.asynchronous.async_arctic",
     "arctic.auth",
     "arctic.asynchronous.async_utils",
     "arctic.date._daterange",
