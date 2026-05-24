@@ -95,7 +95,7 @@ def fancy_group_by(
 def groupby_asof(
     df: pd.DataFrame,
     as_of: datetime | None = None,
-    dt_col: str | int = 'sample_dt',
+    dt_col: str | int | list[str] = 'sample_dt',
     asof_col: str | int = 'observed_dt',
 ) -> pd.DataFrame:
     ''' Common use case for selecting the latest rows from a bitemporal dataframe as-of a certain date.

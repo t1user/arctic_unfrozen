@@ -143,6 +143,7 @@ module = [
     "arctic.scripts.arctic_prune_versions",
     "arctic.scripts.utils",
     "arctic.serialization._serializer",
+    "arctic.store.bitemporal_store",
     "arctic.store.versioned_item",
 ]
 disallow_untyped_defs = true
