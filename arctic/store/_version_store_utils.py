@@ -2,6 +2,8 @@ import functools
 import hashlib
 import logging
 import pickle
+from collections.abc import Iterable
+from typing import Any, Callable, IO
 
 import numpy as np
 import pandas as pd
@@ -14,7 +16,7 @@ from arctic._config import FW_POINTERS_REFS_KEY, FW_POINTERS_CONFIG_KEY, FwPoint
 from arctic._util import mongo_count, get_fwptr_config
 
 
-def _split_arrs(array_2d, slices):
+def _split_arrs(array_2d: np.ndarray, slices: Iterable[int]) -> np.ndarray:
     """
     Equivalent to numpy.split(array_2d, slices),
     but avoids fancy indexing
@@ -22,6 +24,7 @@ def _split_arrs(array_2d, slices):
     if len(array_2d) == 0:
         return np.empty(0, dtype=object)
 
+    slices = list(slices)
     rtn = np.empty(len(slices) + 1, dtype=object)
     start = 0
     for i, s in enumerate(slices):
@@ -31,7 +34,7 @@ def _split_arrs(array_2d, slices):
     return rtn
 
 
-def checksum(symbol, doc):
+def checksum(symbol: str, doc: dict[str, Any]) -> Binary:
     """
     Checksum the passed in dictionary
     """
@@ -46,11 +49,18 @@ def checksum(symbol, doc):
     return Binary(sha.digest())
 
 
-def get_symbol_alive_shas(symbol, versions_coll):
+def get_symbol_alive_shas(symbol: str, versions_coll: Any) -> set[Binary]:
     return set(Binary(x) for x in versions_coll.distinct(FW_POINTERS_REFS_KEY, {'symbol': symbol}))
 
 
-def _cleanup_fw_pointers(collection, symbol, version_ids, versions_coll, shas_to_delete, do_clean=True):
+def _cleanup_fw_pointers(
+    collection: Any,
+    symbol: str,
+    version_ids: Iterable[Any],
+    versions_coll: Any,
+    shas_to_delete: Iterable[Binary] | None,
+    do_clean: bool = True,
+) -> set[Binary]:
     shas_to_delete = set(shas_to_delete) if shas_to_delete else set()
 
     if not version_ids or not shas_to_delete:
@@ -67,7 +77,7 @@ def _cleanup_fw_pointers(collection, symbol, version_ids, versions_coll, shas_to
     return shas_safe_to_delete
 
 
-def _cleanup_parent_pointers(collection, symbol, version_ids):
+def _cleanup_parent_pointers(collection: Any, symbol: str, version_ids: Iterable[Any]) -> None:
     for v in version_ids:
         # Remove all documents which only contain the parent
         collection.delete_many({'symbol': symbol,
@@ -82,14 +92,15 @@ def _cleanup_parent_pointers(collection, symbol, version_ids):
     collection.delete_one({'symbol': symbol, 'parent': []})
 
 
-def _cleanup_mixed(symbol, collection, version_ids, versions_coll):
+def _cleanup_mixed(symbol: str, collection: Any, version_ids: Iterable[Any], versions_coll: Any) -> None:
+    version_ids = list(version_ids)
     # Pull the deleted version IDs from the the parents field
     collection.update_many({'symbol': symbol, 'parent': {'$in': version_ids}}, {'$pullAll': {'parent': version_ids}})
 
     # All-inclusive set of segments which are pointed by at least one version (SHA fw pointers)
     symbol_alive_shas = get_symbol_alive_shas(symbol, versions_coll)
 
-    spec = {'symbol': symbol, 'parent': []}
+    spec: dict[str, Any] = {'symbol': symbol, 'parent': []}
     if symbol_alive_shas:
         # This query unfortunately, while it hits the index (symbol, sha) to find the documents, in order to filter
         # the documents by "parent: []" it fetches at server side, and pollutes the cache of WiredTiger
@@ -98,12 +109,19 @@ def _cleanup_mixed(symbol, collection, version_ids, versions_coll):
     collection.delete_many(spec)
 
 
-def _get_symbol_pointer_cfgs(symbol, versions_coll):
+def _get_symbol_pointer_cfgs(symbol: str, versions_coll: Any) -> set[FwPointersCfg]:
     return set(get_fwptr_config(v)
                for v in versions_coll.find({'symbol': symbol}, projection={FW_POINTERS_CONFIG_KEY: 1}))
 
 
-def cleanup(arctic_lib, symbol, version_ids, versions_coll, shas_to_delete=None, pointers_cfgs=None):
+def cleanup(
+    arctic_lib: Any,
+    symbol: str,
+    version_ids: Iterable[Any],
+    versions_coll: Any,
+    shas_to_delete: Iterable[Binary] | None = None,
+    pointers_cfgs: Iterable[FwPointersCfg] | None = None,
+) -> None:
     """
     Helper method for cleaning up chunks from a version store
     """
@@ -132,11 +150,11 @@ def cleanup(arctic_lib, symbol, version_ids, versions_coll, shas_to_delete=None,
     _cleanup_mixed(symbol, collection, version_ids, versions_coll)
 
 
-def version_base_or_id(version):
+def version_base_or_id(version: dict[str, Any]) -> Any:
     return version.get('base_version_id', version['_id'])
 
 
-def _define_compat_pickle_load():
+def _define_compat_pickle_load() -> Callable[..., Any]:
     """Factory function to initialise the correct Pickle load function based on
     the Pandas version.
     """
@@ -145,14 +163,14 @@ def _define_compat_pickle_load():
     if hasattr(pickle_compat, 'load'):
         return pickle_compat.load
 
-    def load(file_handle):
+    def load(file_handle: IO[bytes]) -> Any:
         """Load pickled data using pandas' compatibility unpickler."""
         return pickle_compat.Unpickler(file_handle).load()
 
     return load
 
 
-def analyze_symbol(instance, sym, from_ver, to_ver, do_reads=False):
+def analyze_symbol(instance: Any, sym: str, from_ver: int | None, to_ver: int | None, do_reads: bool = False) -> None:
     """
     This is a utility function to produce text output with details about the versions of a given symbol.
     It is useful for debugging corruption issues and to mark corrupted versions.
@@ -194,7 +212,11 @@ def analyze_symbol(instance, sym, from_ver, to_ver, do_reads=False):
 
         meta_match_with_prev = v.get('metadata') == prev_v.get('metadata') if prev_v else False
 
-        delta_snap_creation = (min([x.generation_time for x in v.get('parent')]) - v['_id'].generation_time).total_seconds() / 60.0 if v.get('parent') else 0.0
+        delta_snap_creation = (
+            (min([x.generation_time for x in v.get('parent')]) - v['_id'].generation_time).total_seconds() / 60.0
+            if v.get('parent')
+            else 0.0
+        )
 
         prev_v_diff = 0 if not prev_v else v['version'] - prev_v['version']
 
@@ -249,7 +271,14 @@ def analyze_symbol(instance, sym, from_ver, to_ver, do_reads=False):
         ))
 
 
-def _fast_check_corruption(collection, sym, v, check_count, check_last_segment, check_append_safe):
+def _fast_check_corruption(
+    collection: Any,
+    sym: str,
+    v: dict[str, Any] | None,
+    check_count: bool,
+    check_last_segment: bool,
+    check_append_safe: bool,
+) -> bool:
     if v is None:
         logging.warning("Symbol {} with version {} not found, so can't be corrupted.".format(sym, v))
         return False
@@ -299,7 +328,7 @@ def _fast_check_corruption(collection, sym, v, check_count, check_last_segment, 
     return False
 
 
-def is_safe_to_append(instance, sym, input_v):
+def is_safe_to_append(instance: Any, sym: str, input_v: int | dict[str, Any]) -> bool:
     """
     This method hints whether the symbol/version are safe for appending in two ways:
     1. It verifies whether the symbol is already corrupted (fast, doesn't read the data)
@@ -324,7 +353,7 @@ def is_safe_to_append(instance, sym, input_v):
                                       check_count=True, check_last_segment=True, check_append_safe=True)
 
 
-def fast_is_corrupted(instance, sym, input_v):
+def fast_is_corrupted(instance: Any, sym: str, input_v: int | dict[str, Any]) -> bool:
     """
     This method can be used for a fast check (not involving a read) for a corrupted version.
     Users can't trust this as may give false negatives, but it this returns True, then symbol is certainly broken (no false positives)
@@ -347,7 +376,7 @@ def fast_is_corrupted(instance, sym, input_v):
                                   check_count=True, check_last_segment=True, check_append_safe=False)
 
 
-def is_corrupted(instance, sym, input_v):
+def is_corrupted(instance: Any, sym: str, input_v: int | dict[str, Any]) -> bool:
     """
         This method can be used to check for a corrupted version.
         Will continue to a full read (slower) if the internally invoked fast-detection does not locate a corruption.
