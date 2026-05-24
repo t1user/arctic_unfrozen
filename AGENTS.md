@@ -20,6 +20,7 @@ This repository contains the legacy `arctic` Python package, now in maintenance 
 
 - `python -m pip install -e .[test,dev]`: install Arctic plus test and development tooling into the active virtualenv.
 - `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 through 3.13.
+- `python -m pytest`: run the full local suite, including MongoDB-backed integration tests. This took about 8 minutes on Python 3.13 in May 2026 and requires a reachable MongoDB test instance or local `mongod`.
 - `python -m nox -s unit`: run the unit-test CI session on the active Python.
 - `python -m nox -s mypy`: run the type-checking CI session for the `arctic` package.
 - `python -m nox -s integration`: run the MongoDB-backed integration-test CI session on the active Python. Without `ARCTIC_TEST_MONGO_HOST`, this starts a local `mongod` if available.
@@ -40,6 +41,7 @@ Use the narrowest useful verification first, then escalate based on risk and fai
 - For shared behavior changes in storage, dates, serialization, MongoDB, or pandas/numpy compatibility: run the focused tests first, then `python -m nox -s unit`; add targeted integration tests for the affected subsystem.
 - Before pushing for CI validation: rely on GitHub Actions for the full supported Python matrix unless the change is high risk or CI failures need local reproduction.
 - Run `python -m nox -s integration` or matrix sessions only when the change is cross-cutting, when preparing a release, or when explicitly requested.
+- Use plain `python -m pytest` sparingly. It is useful before release-sized changes, but routine work should prefer focused tests plus the relevant nox session.
 
 ## Coding Style & Naming Conventions
 
@@ -50,6 +52,8 @@ Prefer minimal, targeted changes that preserve the existing architecture. Follow
 Use `pytest`. Put fast isolated tests in `tests/unit/` and MongoDB-backed or end-to-end coverage in `tests/integration/`. Name test files `test_*.py` and test functions `test_*`. Add focused regression tests near the affected module, for example `tests/unit/chunkstore/` for `arctic/chunkstore/` changes. If an integration test needs external services, state that clearly in the PR.
 
 GitHub Actions currently runs `nox` mypy, unit, integration-smoke, and full MongoDB-backed integration sessions. Unit and integration jobs run on Python 3.10 through 3.13; mypy runs once against the configured Python 3.10 target. MongoDB jobs use MongoDB 4.4.18 through a GitHub Actions service container. Full integration is blocking in CI, so keep local verification focused before pushing.
+
+Current xfails are intentional compatibility gaps, not expected green tests: read-preference tests still depend on old PyMongo query internals, `test_no_index_labels` preserves a known index-name mismatch, the tickstore spanning-library roundtrip has datetime-resolution drift, direct `pytz` timezone attachment remains broken, and the Python 2 pickle fixture is not compatible with Python 3 text-mode loading.
 
 Benchmarking is deferred to a later stage. The existing ASV and manual benchmark scripts in `benchmarks/` are stale, partly MongoDB-backed, and not suitable for required CI until they are modernized for the supported Python versions and isolated test data.
 

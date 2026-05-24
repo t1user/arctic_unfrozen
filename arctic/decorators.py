@@ -75,6 +75,6 @@ def _handle_error(f, e, retry_count, **kwargs):
     log_fn('%s %s [%s], retrying %i' % (type(e), f.__name__, e, retry_count))
     # Log operation failure errors
     _log_exception(f.__name__, e, retry_count, **kwargs)
-#    if 'unauthorized' in str(e):
-#        raise
+    if isinstance(e, OperationFailure) and 'unauthorized' in str(e):
+        raise
     sleep(0.01 * min((3 ** retry_count), 50))  # backoff...
