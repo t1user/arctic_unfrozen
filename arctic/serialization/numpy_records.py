@@ -1,6 +1,6 @@
 import datetime
 import logging
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union, cast
 
 import dateutil
 import numpy as np
@@ -15,7 +15,7 @@ from ..exceptions import ArcticException
 try:  # 1.3.0+ Compatibility
     from pandas._libs.tslibs.timezones import is_utc
 except ImportError:  # < 1.3.0, this function is unavailable, but should never be called. Stub to satisfy linting.
-    def is_utc(tz):
+    def is_utc(tz: Any) -> Any:
         raise AssertionError("Should never be called for Pandas versions where this is not an exported function")
 
 try:  # 0.21+ Compatibility
@@ -33,19 +33,19 @@ PD_VER = pd.__version__
 DTN64_DTYPE = 'datetime64[ns]'
 
 
-def set_fast_check_df_serializable(config):
+def set_fast_check_df_serializable(config: Any) -> None:
     global FAST_CHECK_DF_SERIALIZABLE
     FAST_CHECK_DF_SERIALIZABLE = bool(config)
 
 
-def _as_numpy_array(arr):
+def _as_numpy_array(arr: Any) -> Any:
     """Return a numpy-backed array for pandas extension arrays."""
     if not hasattr(arr.dtype, 'hasobject'):
         return np.asarray(arr)
     return arr
 
 
-def _to_primitive(arr, string_max_len=None, forced_dtype=None):
+def _to_primitive(arr: Any, string_max_len: int | None = None, forced_dtype: Any = None) -> Any:
     arr = _as_numpy_array(arr)
     if arr.dtype.hasobject:
         if len(arr) > 0 and isinstance(arr[0], Timestamp):
@@ -64,7 +64,7 @@ def _to_primitive(arr, string_max_len=None, forced_dtype=None):
     return arr
 
 
-def treat_tz_as_dateutil(tz) -> bool:
+def treat_tz_as_dateutil(tz: Any) -> bool:
     """
     Return whether the given tz object is from `dateutil`
 
@@ -113,7 +113,7 @@ def consistent_get_timezone_str(tz: Union[datetime.tzinfo, str]) -> str:
     return str(get_timezone(tz))
 
 
-def _multi_index_to_records(index, empty_index):
+def _multi_index_to_records(index: Any, empty_index: bool) -> tuple[list[Any], list[Any], list[str | None]]:
     # array of tuples to numpy cols. copy copy copy
     if not empty_index:
         ix_vals = list(map(np.array, [index.get_level_values(i) for i in range(index.nlevels)]))
@@ -127,7 +127,7 @@ def _multi_index_to_records(index, empty_index):
             index_names[i] = 'level_%d' % count
             count += 1
             log.info("Level in MultiIndex has no name, defaulting to %s" % index_names[i])
-    index_tz = []
+    index_tz: list[str | None] = []
     for i in index.levels:
         if isinstance(i, DatetimeIndex) and i.tz is not None:
             index_tz.append(consistent_get_timezone_str(i.tz))
@@ -139,8 +139,8 @@ def _multi_index_to_records(index, empty_index):
 
 class PandasSerializer(object):
 
-    def _index_to_records(self, df):
-        metadata = {}
+    def _index_to_records(self, df: Any) -> tuple[list[Any], list[Any], dict[str, Any]]:
+        metadata: dict[str, Any] = {}
         index = df.index
         index_tz: Union[Optional[str], List[Optional[str]]]
 
@@ -163,7 +163,7 @@ class PandasSerializer(object):
 
         return index_names, ix_vals, metadata
 
-    def _index_from_records(self, recarr):
+    def _index_from_records(self, recarr: Any) -> Any:
         index = recarr.dtype.metadata['index']
 
         if len(index) == 1:
@@ -177,7 +177,7 @@ class PandasSerializer(object):
                 else:
                     rtn = rtn.tz_localize('UTC').tz_convert(recarr.dtype.metadata['index_tz'])
         else:
-            level_arrays = []
+            level_arrays: list[Any] = []
             index_tz = recarr.dtype.metadata.get('index_tz', [])
             for level_no, index_name in enumerate(index):
                 # build each index level separately to ensure we end up with the right index dtype
@@ -194,7 +194,9 @@ class PandasSerializer(object):
             rtn = MultiIndex.from_arrays(level_arrays, names=index)
         return rtn
 
-    def _to_records(self, df, string_max_len=None, forced_dtype=None):
+    def _to_records(
+        self, df: Any, string_max_len: int | None = None, forced_dtype: Any = None
+    ) -> tuple[Any, np.dtype]:
         """
         Similar to DataFrame.to_records()
         Differences:
@@ -217,7 +219,7 @@ class PandasSerializer(object):
         metadata['columns'] = columns
         names = index_names + columns
 
-        arrays = []
+        arrays: list[Any] = []
         for arr, name in zip(ix_vals + column_vals, index_names + columns):
             arrays.append(_to_primitive(arr, string_max_len,
                                         forced_dtype=None if forced_dtype is None else forced_dtype[name]))
@@ -230,14 +232,17 @@ class PandasSerializer(object):
             dtype = forced_dtype
 
         # The argument names is ignored when dtype is passed
-        rtn = np.rec.fromarrays(arrays, dtype=dtype, names=names)
+        rtn = np.rec.fromarrays(arrays, dtype=dtype, names=cast(Any, names))
         # For some reason the dtype metadata is lost in the line above
         # and setting rtn.dtype to dtype does not preserve the metadata
         # see https://github.com/numpy/numpy/issues/6771
 
         return (rtn, dtype)
 
-    def fast_check_serializable(self, df):
+    def _column_data(self, item: Any) -> tuple[list[Any], list[Any], Any]:
+        raise NotImplementedError
+
+    def fast_check_serializable(self, df: Any) -> tuple[Any, dict[str, Any]]:
         """
         Convert efficiently the frame's object-columns/object-index/multi-index/multi-column to
         records, by creating a recarray only for the object fields instead for the whole dataframe.
@@ -265,9 +270,10 @@ class PandasSerializer(object):
         df_objects_only = df[fields_with_object if fields_with_object else df.columns[:2]]
         # Let any exceptions bubble up from here
         arr, dtype = self._to_records(df_objects_only)
+        assert dtype.names is not None
         return arr, {f: dtype[f] for f in dtype.names}
 
-    def can_convert_to_records_without_objects(self, df, symbol):
+    def can_convert_to_records_without_objects(self, df: Any, symbol: str) -> bool:
         # We can't easily distinguish string columns from objects
         try:
             # TODO: we can add here instead a check based on df size and enable fast-check if sz > threshold value
@@ -291,24 +297,24 @@ class PandasSerializer(object):
             else:
                 return True
 
-    def serialize(self, item, string_max_len=None, forced_dtype=None):
+    def serialize(self, item: Any, string_max_len: int | None = None, forced_dtype: Any = None) -> Any:
         raise NotImplementedError
 
-    def deserialize(self, item, force_bytes_to_unicode=False):
+    def deserialize(self, item: Any, force_bytes_to_unicode: bool = False) -> Any:
         raise NotImplementedError
 
 
 class SeriesSerializer(PandasSerializer):
     TYPE = 'series'
 
-    def _column_data(self, s):
+    def _column_data(self, s: Any) -> tuple[list[Any], list[Any], None]:
         if s.name is None:
             log.info("Series has no name, defaulting to 'values'")
         columns = [s.name if s.name else 'values']
         column_vals = [s.values]
         return columns, column_vals, None
 
-    def deserialize(self, item, force_bytes_to_unicode=False):
+    def deserialize(self, item: Any, force_bytes_to_unicode: bool = False) -> Series:
         index = self._index_from_records(item)
         name = item.dtype.names[-1]
         data = item[name]
@@ -318,7 +324,7 @@ class SeriesSerializer(PandasSerializer):
                 data = data.astype('unicode')
 
             if isinstance(index, MultiIndex):
-                unicode_indexes = []
+                unicode_indexes: list[Any] = []
                 # MultiIndex requires a conversion at each level.
                 for level in range(len(index.levels)):
                     _index = index.get_level_values(level)
@@ -335,14 +341,16 @@ class SeriesSerializer(PandasSerializer):
         else:
             return Series(data, index=index, name=name)
 
-    def serialize(self, item, string_max_len=None, forced_dtype=None):
+    def serialize(
+        self, item: Any, string_max_len: int | None = None, forced_dtype: Any = None
+    ) -> tuple[Any, np.dtype]:
         return self._to_records(item, string_max_len, forced_dtype)
 
 
 class DataFrameSerializer(PandasSerializer):
     TYPE = 'df'
 
-    def _column_data(self, df):
+    def _column_data(self, df: Any) -> tuple[list[str], list[Any], dict[str, Any] | None]:
         columns = list(map(str, df.columns))
         if columns != list(df.columns):
             log.info("Dataframe column names converted to strings")
@@ -358,7 +366,7 @@ class DataFrameSerializer(PandasSerializer):
         else:
             return columns, column_vals, None
 
-    def deserialize(self, item, force_bytes_to_unicode=False):
+    def deserialize(self, item: Any, force_bytes_to_unicode: bool = False) -> DataFrame:
         index = self._index_from_records(item)
         column_fields = [x for x in item.dtype.names if x not in item.dtype.metadata['index']]
         multi_column = item.dtype.metadata.get('multi_column')
@@ -392,7 +400,7 @@ class DataFrameSerializer(PandasSerializer):
                     df[c] = df[c].str.decode('utf-8')
 
             if isinstance(df.index, MultiIndex):
-                unicode_indexes = []
+                unicode_indexes: list[Any] = []
                 # MultiIndex requires a conversion at each level.
                 for level in range(len(df.index.levels)):
                     _index = df.index.get_level_values(level)
@@ -409,5 +417,7 @@ class DataFrameSerializer(PandasSerializer):
 
         return df
 
-    def serialize(self, item, string_max_len=None, forced_dtype=None):
+    def serialize(
+        self, item: Any, string_max_len: int | None = None, forced_dtype: Any = None
+    ) -> tuple[Any, np.dtype]:
         return self._to_records(item, string_max_len, forced_dtype)

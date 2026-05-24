@@ -144,6 +144,7 @@ module = [
     "arctic.scripts.utils",
     "arctic.serialization.incremental",
     "arctic.serialization.numpy_arrays",
+    "arctic.serialization.numpy_records",
     "arctic.serialization._serializer",
     "arctic.store.audit",
     "arctic.store.bitemporal_store",
