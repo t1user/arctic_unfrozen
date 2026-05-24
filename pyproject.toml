@@ -130,6 +130,7 @@ module = [
     "arctic.date._parse",
     "arctic.date._util",
     "arctic.decorators",
+    "arctic.fixtures.arctic",
     "arctic.hooks",
     "arctic.hosts",
     "arctic.multi_index",

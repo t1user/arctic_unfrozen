@@ -7,6 +7,7 @@ import socket
 import subprocess
 import time
 from dataclasses import dataclass
+from typing import Any
 
 import bson
 import pytest as pytest
@@ -31,27 +32,29 @@ class MongoServer:
 SYSTEM_DATABASES = {"admin", "config", "local"}
 
 
-def _free_port():
+def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
         return sock.getsockname()[1]
 
 
-def _connect_mongo(host):
+def _connect_mongo(host: Any) -> MongoServer:
     client = MongoClient(host, serverSelectionTimeoutMS=500)
     client.admin.command("ping")
-    hostname, port = client.address
+    address = client.address
+    assert address is not None
+    hostname, port = address
     return MongoServer(hostname=hostname, port=port, api=client)
 
 
-def _drop_test_databases(client):
+def _drop_test_databases(client: Any) -> None:
     for database_name in client.list_database_names():
         if database_name not in SYSTEM_DATABASES:
             client.drop_database(database_name)
 
 
 @pytest.fixture(scope="session")
-def _mongo_server(tmp_path_factory):
+def _mongo_server(tmp_path_factory: Any) -> Any:
     host = os.environ.get("ARCTIC_TEST_MONGO_HOST")
     if host:
         server = _connect_mongo(host)
@@ -62,6 +65,7 @@ def _mongo_server(tmp_path_factory):
     mongod = shutil.which("mongod")
     if mongod is None:
         pytest.skip("mongod is required for integration tests")
+    assert mongod is not None
 
     port = _free_port()
     dbpath = tmp_path_factory.mktemp("mongodb")
@@ -82,22 +86,22 @@ def _mongo_server(tmp_path_factory):
         stderr=subprocess.STDOUT,
     )
 
-    server = None
+    launched_server: MongoServer | None = None
     try:
         for _ in range(100):
             if process.poll() is not None:
                 break
             try:
-                server = _connect_mongo(f"127.0.0.1:{port}")
+                launched_server = _connect_mongo(f"127.0.0.1:{port}")
                 break
             except ServerSelectionTimeoutError:
                 time.sleep(0.1)
-        if server is None:
+        if launched_server is None:
             raise RuntimeError(f"mongod did not start; see {logpath}")
-        yield server
+        yield launched_server
     finally:
-        if server is not None:
-            server.api.close()
+        if launched_server is not None:
+            launched_server.api.close()
         process.terminate()
         try:
             process.wait(timeout=10)
@@ -107,19 +111,19 @@ def _mongo_server(tmp_path_factory):
 
 
 @pytest.fixture(scope="function")
-def mongo_server(_mongo_server):
+def mongo_server(_mongo_server: MongoServer) -> Any:
     _drop_test_databases(_mongo_server.api)
     yield _mongo_server
     _drop_test_databases(_mongo_server.api)
 
 
 @pytest.fixture(scope="function")
-def mongo_host(mongo_server):
+def mongo_host(mongo_server: MongoServer) -> str:
     return str(mongo_server.hostname) + ":" + str(mongo_server.port)
 
 
 @pytest.fixture(scope="function")
-def arctic(mongo_server):
+def arctic(mongo_server: MongoServer) -> Any:
     logger.info('arctic.fixtures: arctic init()')
     mongo_server.api.drop_database('arctic')
     mongo_server.api.drop_database('arctic_{}'.format(getpass.getuser()))
@@ -131,13 +135,13 @@ def arctic(mongo_server):
 
 # A arctic which allows reads to hit the secondary
 @pytest.fixture(scope="function")
-def arctic_secondary(mongo_server, arctic):
+def arctic_secondary(mongo_server: MongoServer, arctic: Any) -> Any:
     arctic = m.Arctic(mongo_host=mongo_server.api, allow_secondary=True)
     return arctic
 
 
 @pytest.fixture(scope="function")
-def multicolumn_store_with_uncompressed_write(mongo_server):
+def multicolumn_store_with_uncompressed_write(mongo_server: MongoServer) -> dict[str, Any]:
     """
     The database state created by this fixture is equivalent to the following operations using arctic 1.40
     or previous:
@@ -224,7 +228,7 @@ def multicolumn_store_with_uncompressed_write(mongo_server):
 
 
 @pytest.fixture(scope="function")
-def ndarray_store_with_uncompressed_write(mongo_server):
+def ndarray_store_with_uncompressed_write(mongo_server: MongoServer) -> dict[str, Any]:
     """
     The database state created by this fixture is equivalent to the following operations using arctic 1.40
     or previous:
@@ -306,55 +310,55 @@ def ndarray_store_with_uncompressed_write(mongo_server):
 
 
 @pytest.fixture(scope="function")
-def library_name():
+def library_name() -> str:
     return 'test.TEST'
 
 
 @pytest.fixture(scope="function")
-def user_library_name():
+def user_library_name() -> str:
     return "{}.TEST".format(getpass.getuser())
 
 
 @pytest.fixture(scope="function")
-def overlay_library_name():
+def overlay_library_name() -> str:
     return "test.OVERLAY"
 
 
 @pytest.fixture(scope="function")
-def library(arctic, library_name):
+def library(arctic: Any, library_name: str) -> Any:
     # Add a single test library
     arctic.initialize_library(library_name, m.VERSION_STORE, segment='month')
     return arctic.get_library(library_name)
 
 
 @pytest.fixture(scope="function")
-def bitemporal_library(arctic, library_name):
+def bitemporal_library(arctic: Any, library_name: str) -> BitemporalStore:
     arctic.initialize_library(library_name, m.VERSION_STORE, segment='month')
     return BitemporalStore(arctic.get_library(library_name))
 
 
 @pytest.fixture(scope="function")
-def library_secondary(arctic_secondary, library_name):
+def library_secondary(arctic_secondary: Any, library_name: str) -> Any:
     arctic_secondary.initialize_library(library_name, m.VERSION_STORE, segment='month')
     return arctic_secondary.get_library(library_name)
 
 
 @pytest.fixture(scope="function")
-def user_library(arctic, user_library_name):
+def user_library(arctic: Any, user_library_name: str) -> Any:
     arctic.initialize_library(user_library_name, m.VERSION_STORE, segment='month')
     return arctic.get_library(user_library_name)
 
 
 @pytest.fixture(scope="function")
-def overlay_library(arctic, overlay_library_name):
+def overlay_library(arctic: Any, overlay_library_name: str) -> tuple[Any, Any]:
     """ Overlay library fixture, returns a pair of libs, read-write: ${name} and read-only: ${name}_RAW
     """
     # Call _create_overlay_library to avoid:
     #  RemovedInPytest4Warning: Fixture overlay_library called directly. Fixtures are not meant to be called directly
-    return _overlay_library(arctic, overlay_library)
+    return _overlay_library(arctic, overlay_library_name)
 
 
-def _overlay_library(arctic, overlay_library_name):
+def _overlay_library(arctic: Any, overlay_library_name: str) -> tuple[Any, Any]:
     rw_name = overlay_library_name
     ro_name = '{}_RAW'.format(overlay_library_name)
     arctic.initialize_library(rw_name, m.VERSION_STORE, segment='year')
@@ -363,24 +367,24 @@ def _overlay_library(arctic, overlay_library_name):
 
 
 @pytest.fixture(scope="function")
-def tickstore_lib(arctic, library_name):
+def tickstore_lib(arctic: Any, library_name: str) -> Any:
     # Call _create_overlay_library to avoid:
     #  RemovedInPytest4Warning: Fixture overlay_library called directly. Fixtures are not meant to be called directly
     return _tickstore_lib(arctic, library_name)
 
 
-def _tickstore_lib(arctic, library_name):
+def _tickstore_lib(arctic: Any, library_name: str) -> Any:
     arctic.initialize_library(library_name, TICK_STORE_TYPE)
     return arctic.get_library(library_name)
 
 
 @pytest.fixture(scope="function")
-def chunkstore_lib(arctic, library_name):
+def chunkstore_lib(arctic: Any, library_name: str) -> Any:
     arctic.initialize_library(library_name, CHUNK_STORE_TYPE)
     return arctic.get_library(library_name)
 
 
 @pytest.fixture(scope="function")
-def ms_lib(arctic, library_name):
+def ms_lib(arctic: Any, library_name: str) -> Any:
     arctic.initialize_library(library_name, m.METADATA_STORE)
     return arctic.get_library(library_name)
