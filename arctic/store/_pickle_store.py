@@ -1,6 +1,7 @@
 import io
 import logging
 from operator import itemgetter
+from typing import Any, cast
 
 import bson
 from bson.binary import Binary
@@ -20,21 +21,22 @@ _CHUNK_SIZE = 15 * 1024 * 1024  # 15MB
 _HARD_MAX_BSON_ENCODE = 10 * 1024 * 1024  # 10MB
 
 logger = logging.getLogger(__name__)
+_MAX_BSON_ENCODE = cast(int, MAX_BSON_ENCODE)
 
 
 class PickleStore(object):
 
     @classmethod
-    def initialize_library(cls, *args, **kwargs):
+    def initialize_library(cls, *args: Any, **kwargs: Any) -> None:
         pass
 
-    def get_info(self, _version):
+    def get_info(self, _version: Any) -> dict[str, str]:
         return {
             'type': 'blob',
             'handler': self.__class__.__name__,
         }
 
-    def read(self, mongoose_lib, version, symbol, **kwargs):
+    def read(self, mongoose_lib: Any, version: dict[str, Any], symbol: Any, **kwargs: Any) -> Any:
         blob = version.get("blob")
         if blob is not None:
             if blob == _MAGIC_CHUNKEDV2:
@@ -69,10 +71,10 @@ class PickleStore(object):
         return version['data']
 
     @staticmethod
-    def read_options():
+    def read_options() -> list[Any]:
         return []
 
-    def write(self, arctic_lib, version, symbol, item, _previous_version):
+    def write(self, arctic_lib: Any, version: dict[str, Any], symbol: Any, item: Any, _previous_version: Any) -> None:
         # Currently we try to bson encode if the data is less than a given size and store it in
         # the version collection, but pickling might be preferable if we have characters that don't
         # play well with the bson encoder or if you always want your data in the data collection.
@@ -80,7 +82,7 @@ class PickleStore(object):
             try:
                 # If it's encodeable, then ship it
                 b = bson.BSON.encode({'data': item})
-                if len(b) < min(MAX_BSON_ENCODE, _HARD_MAX_BSON_ENCODE):
+                if len(b) < min(_MAX_BSON_ENCODE, _HARD_MAX_BSON_ENCODE):
                     version['data'] = item
                     return
             except InvalidDocument:

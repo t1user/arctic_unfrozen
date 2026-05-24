@@ -146,6 +146,7 @@ module = [
     "arctic.store.audit",
     "arctic.store.bitemporal_store",
     "arctic.store.bson_store",
+    "arctic.store._pickle_store",
     "arctic.store.versioned_item",
 ]
 disallow_untyped_defs = true
