@@ -3,6 +3,8 @@ Utility functions for multi-index dataframes. Useful for creating bi-temporal ti
 '''
 import logging
 from datetime import datetime
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -16,12 +18,20 @@ logger = logging.getLogger(__name__)
 
 # ----------------------- Grouping and Aggregating  ---------------------------- #
 
-def _lexsort_depth(index):
+def _lexsort_depth(index: Any) -> int:
     """Return MultiIndex lexsort depth across pandas versions."""
     return getattr(index, "lexsort_depth", index._lexsort_depth)
 
 
-def fancy_group_by(df, grouping_level=0, aggregate_level=1, method='last', max_=None, min_=None, within=None):
+def fancy_group_by(
+    df: pd.DataFrame,
+    grouping_level: int | str | list[str] = 0,
+    aggregate_level: int | str = 1,
+    method: str = 'last',
+    max_: Any | None = None,
+    min_: Any | None = None,
+    within: Any | None = None,
+) -> pd.DataFrame:
     """ Dataframe group-by operation that supports aggregating by different methods on the index.
 
     Parameters
@@ -48,11 +58,13 @@ def fancy_group_by(df, grouping_level=0, aggregate_level=1, method='last', max_=
         raise ValueError('Invalid method')
 
     if isinstance(aggregate_level, str):
-        aggregate_level = df.index.names.index(aggregate_level)
+        aggregate_level_index = df.index.names.index(aggregate_level)
+    else:
+        aggregate_level_index = aggregate_level
 
     # Trim any rows outside the aggregate value bounds
     if max_ is not None or min_ is not None or within is not None:
-        agg_idx = df.index.get_level_values(aggregate_level)
+        agg_idx = df.index.get_level_values(aggregate_level_index)
         mask = np.full(len(agg_idx), True, dtype='b1')
         if max_ is not None:
             mask &= (agg_idx <= max_)
@@ -69,7 +81,7 @@ def fancy_group_by(df, grouping_level=0, aggregate_level=1, method='last', max_=
     # The sort order must be correct in order of grouping_level -> aggregate_level for the aggregation methods
     # to work properly. We can check the sortdepth to see if this is in fact the case and resort if necessary.
     # TODO: this might need tweaking if the levels are around the wrong way
-    if _lexsort_depth(df.index) < (aggregate_level + 1):
+    if _lexsort_depth(df.index) < (aggregate_level_index + 1):
         df = df.sort_index(level=grouping_level)
 
     gb = df.groupby(level=grouping_level)
@@ -80,7 +92,12 @@ def fancy_group_by(df, grouping_level=0, aggregate_level=1, method='last', max_=
 
 # --------- Common as-of-date use case -------------- #
 
-def groupby_asof(df, as_of=None, dt_col='sample_dt', asof_col='observed_dt'):
+def groupby_asof(
+    df: pd.DataFrame,
+    as_of: datetime | None = None,
+    dt_col: str | int = 'sample_dt',
+    asof_col: str | int = 'observed_dt',
+) -> pd.DataFrame:
     ''' Common use case for selecting the latest rows from a bitemporal dataframe as-of a certain date.
 
     Parameters
@@ -108,7 +125,7 @@ def groupby_asof(df, as_of=None, dt_col='sample_dt', asof_col='observed_dt'):
 # ----------------------- Insert/Append ---------------------------- #
 
 
-def multi_index_insert_row(df, index_row, values_row):
+def multi_index_insert_row(df: pd.DataFrame, index_row: Sequence[Any], values_row: Any) -> pd.DataFrame:
     """ Return a new dataframe with a row inserted for a multi-index dataframe.
         This will sort the rows according to the ordered multi-index levels.
     """
@@ -129,7 +146,7 @@ def multi_index_insert_row(df, index_row, values_row):
     return df.sort_index()
 
 
-def insert_at(df, sample_date, values):
+def insert_at(df: pd.DataFrame, sample_date: Any, values: Any) -> pd.DataFrame:
     """ Insert some values into a bi-temporal dataframe.
         This is like what would happen when we get a price correction.
     """
