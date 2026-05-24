@@ -179,7 +179,8 @@ class MetadataStore(BSONStore):
             with symbol names as headers and timestamps as indices
             (the same format as output of read_history)
             Example:
-                [pandas.DataFrame({'symbol': [{}]}, [datetime.datetime.utcnow()])]
+                now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                [pandas.DataFrame({'symbol': [{}]}, [now])]
         """
         documents = []
         for dataframe in collection:

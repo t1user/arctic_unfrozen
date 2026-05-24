@@ -1,4 +1,4 @@
-from datetime import datetime as dt, timedelta as dtd
+from datetime import datetime as dt, timedelta as dtd, timezone
 
 import bson
 import numpy as np
@@ -13,6 +13,10 @@ from arctic.store.version_store import register_versioned_storage
 from tests.integration.store.test_version_store import _query, FwPointersCtx
 
 register_versioned_storage(NdarrayStore)
+
+
+def _utcnow():
+    return dt.now(timezone.utc).replace(tzinfo=None)
 
 
 def test_write_new_column_name_to_arctic_1_40_data(ndarray_store_with_uncompressed_write):
@@ -167,10 +171,9 @@ def test_mutable_ndarray(library):
     assert saved_arr.flags['WRITEABLE']
 
 
-@pytest.mark.xfail(reason="delete_version not safe with append...")
 def test_delete_version_shouldnt_break_read(library):
     data = np.arange(30)
-    yesterday = dt.utcnow() - dtd(days=1, seconds=1)
+    yesterday = _utcnow() - dtd(days=1, seconds=1)
     _id = bson.ObjectId.from_datetime(yesterday)
     with patch("bson.ObjectId", return_value=_id):
         library.write('symbol', data, prune_previous_version=False)

@@ -382,7 +382,7 @@ class DataFrameSerializer(PandasSerializer):
             # This should not be used for a normal flow, and you should instead of writing unicode strings
             # if you want to work with str in py3.,
 
-            for c in df.select_dtypes(object):
+            for c in [column for column, dtype in df.dtypes.items() if dtype == NP_OBJECT_DTYPE]:
                 # The conversion is not using astype similar to the index as pandas has a bug where it tries to convert
                 # the data columns to a unicode string, and the object in this case would be bytes, eg. b'abc'
                 # which is converted to u"b'abc'" i.e it includes the b character as well! This generally happens
