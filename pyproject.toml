@@ -117,6 +117,7 @@ module = [
     "arctic.chunkstore.passthrough_chunker",
     "arctic.chunkstore.utils",
     "arctic._cache",
+    "arctic._compression",
     "arctic.auth",
     "arctic.asynchronous.async_utils",
     "arctic.date._daterange",

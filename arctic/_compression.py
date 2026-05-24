@@ -1,10 +1,12 @@
 import logging
+from collections.abc import Sequence
 from multiprocessing.pool import ThreadPool
+from typing import cast
 
 try:
     from lz4.block import compress as lz4_compress, decompress as lz4_decompress
 
-    def lz4_compressHC(_str):
+    def lz4_compressHC(_str: bytes) -> bytes:
         return lz4_compress(_str, mode='high_compression')
 except ImportError as e:
     from lz4 import (  # type: ignore[no-redef]
@@ -14,16 +16,25 @@ except ImportError as e:
     )
 
 # ENABLE_PARALLEL mutated in global_scope. Do not remove.
-from ._config import ENABLE_PARALLEL, LZ4_HIGH_COMPRESSION, LZ4_WORKERS, LZ4_N_PARALLEL, LZ4_MINSZ_PARALLEL, \
-    BENCHMARK_MODE  # noqa # pylint: disable=unused-import
+from ._config import (  # noqa # pylint: disable=unused-import
+    BENCHMARK_MODE,
+    ENABLE_PARALLEL,
+    LZ4_HIGH_COMPRESSION,
+    LZ4_MINSZ_PARALLEL as _LZ4_MINSZ_PARALLEL,
+    LZ4_N_PARALLEL as _LZ4_N_PARALLEL,
+    LZ4_WORKERS as _LZ4_WORKERS,
+)
 
 logger = logging.getLogger(__name__)
 
+LZ4_MINSZ_PARALLEL = cast(int, _LZ4_MINSZ_PARALLEL)
+LZ4_N_PARALLEL = cast(int, _LZ4_N_PARALLEL)
+LZ4_WORKERS = cast(int, _LZ4_WORKERS)
 
-_compress_thread_pool = None
+_compress_thread_pool: ThreadPool | None = None
 
 
-def enable_parallel_lz4(mode):
+def enable_parallel_lz4(mode: bool) -> None:
     """
     Set the global multithread compression mode
 
@@ -37,7 +48,7 @@ def enable_parallel_lz4(mode):
     logger.info("Setting parallelisation mode to {}".format("multi-threaded" if mode else "single-threaded"))
 
 
-def set_compression_pool_size(pool_size):
+def set_compression_pool_size(pool_size: int | str) -> None:
     """
     Set the size of the compression workers thread pool.
     If the pool is already created, it waits until all jobs are finished, and then proceeds with setting the new size.
@@ -62,7 +73,7 @@ def set_compression_pool_size(pool_size):
     _compress_thread_pool = ThreadPool(pool_size)
 
 
-def compress_array(str_list, withHC=LZ4_HIGH_COMPRESSION):
+def compress_array(str_list: Sequence[bytes], withHC: bool = LZ4_HIGH_COMPRESSION) -> list[bytes] | Sequence[bytes]:
     """
     Compress an array of strings
 
@@ -85,7 +96,7 @@ def compress_array(str_list, withHC=LZ4_HIGH_COMPRESSION):
 
     do_compress = lz4_compressHC if withHC else lz4_compress
 
-    def can_parallelize_strlist(strlist):
+    def can_parallelize_strlist(strlist: Sequence[bytes]) -> bool:
         return len(strlist) > LZ4_N_PARALLEL and len(strlist[0]) > LZ4_MINSZ_PARALLEL
 
     use_parallel = (ENABLE_PARALLEL and withHC) or can_parallelize_strlist(str_list)
@@ -98,7 +109,7 @@ def compress_array(str_list, withHC=LZ4_HIGH_COMPRESSION):
     return [do_compress(s) for s in str_list]
 
 
-def compress(_str):
+def compress(_str: bytes) -> bytes:
     """
     Compress a string
 
@@ -108,28 +119,28 @@ def compress(_str):
     return lz4_compress(_str)
 
 
-def compressHC(_str):
+def compressHC(_str: bytes) -> bytes:
     """
     HC compression
     """
     return lz4_compressHC(_str)
 
 
-def compressHC_array(str_list):
+def compressHC_array(str_list: Sequence[bytes]) -> list[bytes] | Sequence[bytes]:
     """
     HC compression
     """
     return compress_array(str_list, withHC=True)
 
 
-def decompress(_str):
+def decompress(_str: bytes) -> bytes:
     """
     Decompress a string
     """
     return lz4_decompress(_str)
 
 
-def decompress_array(str_list):
+def decompress_array(str_list: Sequence[bytes]) -> list[bytes] | Sequence[bytes]:
     """
     Decompress a list of strings
     """
