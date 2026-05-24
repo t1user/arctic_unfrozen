@@ -7,7 +7,9 @@ class VersionedItem(namedtuple('VersionedItem', ['symbol', 'library', 'data', 'v
     Class representing a Versioned object in VersionStore.
     """
 
-    def __new__(cls, symbol: str, library: str, data: Any, version: int, metadata: Any, host: str | None = None) -> "VersionedItem":
+    def __new__(
+        cls, symbol: str, library: str | None, data: Any, version: int, metadata: Any, host: str | None = None
+    ) -> "VersionedItem":
         return super(VersionedItem, cls).__new__(cls, symbol, library, data, version, metadata, host)
 
     def metadata_dict(self) -> dict[str, Any]:
