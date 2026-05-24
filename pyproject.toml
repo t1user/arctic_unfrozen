@@ -142,6 +142,7 @@ module = [
     "arctic.scripts.arctic_list_libraries",
     "arctic.scripts.arctic_prune_versions",
     "arctic.scripts.utils",
+    "arctic.serialization.numpy_arrays",
     "arctic.serialization._serializer",
     "arctic.store.audit",
     "arctic.store.bitemporal_store",
