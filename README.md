@@ -1,7 +1,7 @@
-# Development moved to ArcticDB GitHub Repository
-
-This repository and project are now in maintenance mode. Development has migrated to [ArcticDB](https://github.com/man-group/ArcticDB).
+# This is a fork of unmaintained python Arctic library originally developed by Man Group
 
 ---
 
-Information on how to set up, install and use Arctic has been moved to [README-arctic.md](README-arctic.md). 
+The purpose of this project is to bring Arctic back to live. 
+
+Information on how to set up, install and use Arctic can be found in its original documentation [README-arctic.md](README-arctic.md). 
