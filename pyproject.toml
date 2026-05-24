@@ -110,3 +110,17 @@ python_version = "3.10"
 packages = ["arctic"]
 ignore_missing_imports = true
 warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+    "arctic.chunkstore._chunker",
+    "arctic.chunkstore.passthrough_chunker",
+    "arctic.chunkstore.utils",
+    "arctic.date._daterange",
+    "arctic.date._generalslice",
+    "arctic.date._parse",
+    "arctic.hooks",
+    "arctic.serialization._serializer",
+    "arctic.store.versioned_item",
+]
+disallow_untyped_defs = true

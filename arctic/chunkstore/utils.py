@@ -1,9 +1,11 @@
 """
 Helper functions that are not 'core' to chunkstore
 """
+from collections.abc import Callable, Iterator
+from typing import Any
 
 
-def read_apply(lib, symbol, func, chunk_range=None):
+def read_apply(lib: Any, symbol: str, func: Callable[[Any], Any], chunk_range: Any = None) -> Iterator[Any]:
     """
     Apply `func` to each chunk in lib.symbol
 

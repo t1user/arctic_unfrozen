@@ -1,10 +1,14 @@
+from collections.abc import Iterator
+from typing import Any
+
+
 START = 's'
 END = 'e'
 
 
 class Chunker(object):
 
-    def to_chunks(self, data, **kwargs):
+    def to_chunks(self, data: Any, **kwargs: Any) -> Iterator[tuple[Any, Any, Any, Any]]:
         """
         Chunks data. keyword args passed in from write API
 
@@ -18,7 +22,7 @@ class Chunker(object):
         """
         raise NotImplementedError
 
-    def to_range(self, start, end):
+    def to_range(self, start: Any, end: Any) -> Any:
         """
         takes start, end from to_chunks and returns a "range" that can be used
         as the argument to methods require a chunk_range
@@ -29,7 +33,7 @@ class Chunker(object):
         """
         raise NotImplementedError
 
-    def to_mongo(self, range_obj):
+    def to_mongo(self, range_obj: Any) -> dict[str, Any]:
         """
         takes the range object used for this chunker type
         and converts it into a string that can be use for a
@@ -41,7 +45,7 @@ class Chunker(object):
         """
         raise NotImplementedError
 
-    def filter(self, data, range_obj):
+    def filter(self, data: Any, range_obj: Any) -> Any:
         """
         ensures data is properly subset to the range in range_obj.
         (Depending on how the chunking is implemented, it might be possible
@@ -56,7 +60,7 @@ class Chunker(object):
         """
         raise NotImplementedError
 
-    def exclude(self, data, range_obj):
+    def exclude(self, data: Any, range_obj: Any) -> Any:
         """
         Removes data within the bounds of the range object (inclusive)
 
@@ -66,7 +70,7 @@ class Chunker(object):
         """
         raise NotImplementedError
 
-    def chunk_to_str(self, chunk_id):
+    def chunk_to_str(self, chunk_id: Any) -> str | bytes:
         """
         Converts parts of a chunk range (start or end) to a string. These
         chunk ids/indexes/markers are produced by to_chunks.

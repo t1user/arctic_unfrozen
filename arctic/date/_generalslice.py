@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Any
 
 
 class Intervals(Enum):
@@ -26,20 +27,20 @@ class GeneralSlice(object):
     =====  ====  ============================  ===============================
     """
 
-    def __init__(self, start, end, step=None, interval=CLOSED_CLOSED):
+    def __init__(self, start: Any, end: Any, step: Any = None, interval: Intervals = CLOSED_CLOSED) -> None:
         self.start = start
         self.end = end
         self.step = step
         self.interval = interval
 
     @property
-    def startopen(self):
+    def startopen(self) -> bool:
         """True if the start of the range is open (item > start),
         False if the start of the range is closed (item >= start)."""
         return self.interval in (OPEN_CLOSED, OPEN_OPEN)
 
     @property
-    def endopen(self):
+    def endopen(self) -> bool:
         """True if the end of the range is open (item < end),
         False if the end of the range is closed (item <= end)."""
         return self.interval in (CLOSED_OPEN, OPEN_OPEN)
