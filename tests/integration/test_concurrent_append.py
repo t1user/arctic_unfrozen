@@ -3,10 +3,15 @@ import time
 from datetime import datetime, timedelta
 from multiprocessing import Process, Semaphore
 
+import pytest
 from pandas.core.frame import DataFrame
 
 from arctic.arctic import Arctic
 from arctic.exceptions import OptimisticLockException
+
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:This process .* is multi-threaded, use of fork\\(\\) may lead to deadlocks in the child.:DeprecationWarning"
+)
 
 
 class Appender(object):
