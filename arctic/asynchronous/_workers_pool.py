@@ -8,8 +8,6 @@ from concurrent.futures import ThreadPoolExecutor, wait, ALL_COMPLETED, FIRST_EX
 from arctic._config import ARCTIC_ASYNC_NWORKERS
 from arctic.exceptions import AsyncArcticException
 
-ABC = abc.ABCMeta('ABC', (object,), {})
-
 
 def _looping_task(shutdown_flag, fun, *args, **kwargs):
     while not shutdown_flag.is_set():
@@ -28,7 +26,7 @@ def _exec_task(fun, *args, **kwargs):
         raise e
 
 
-class LazySingletonTasksCoordinator(ABC):
+class LazySingletonTasksCoordinator(object, metaclass=abc.ABCMeta):
     """
     A Thread-Safe singleton lazily initialized thread pool class (encapsulating concurrent.futures.ThreadPoolExecutor)
     """

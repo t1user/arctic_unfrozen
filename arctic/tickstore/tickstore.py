@@ -23,9 +23,15 @@ from .._util import indent
 
 try:
     from lz4.block import compress as lz4_compress, decompress as lz4_decompress
-    lz4_compressHC = lambda _str: lz4_compress(_str, mode='high_compression')
+
+    def lz4_compressHC(_str):
+        return lz4_compress(_str, mode='high_compression')
 except ImportError as e:
-    from lz4 import compress as lz4_compress, compressHC as lz4_compressHC, decompress as lz4_decompress
+    from lz4 import (  # type: ignore[no-redef]
+        compress as lz4_compress,
+        compressHC as lz4_compressHC,
+        decompress as lz4_decompress,
+    )
 
 
 PD_VER = pd.__version__

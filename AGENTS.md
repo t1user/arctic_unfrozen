@@ -21,6 +21,7 @@ This repository contains the legacy `arctic` Python package, now in maintenance 
 - `python -m pip install -e .[test,dev]`: install Arctic plus test and development tooling into the active virtualenv.
 - `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 through 3.13.
 - `python -m nox -s unit`: run the unit-test CI session on the active Python.
+- `python -m nox -s mypy`: run the type-checking CI session for the `arctic` package.
 - `python -m nox -s integration`: run the MongoDB-backed integration-test CI session on the active Python. Without `ARCTIC_TEST_MONGO_HOST`, this starts a local `mongod` if available.
 - `python -m nox -s unit_matrix integration_matrix`: run the full local Python matrix only before high-risk pushes or when explicitly requested. It is too slow for routine edit cycles.
 - `python -m pytest tests/unit/test_auth.py`: run a focused test file or directory.
@@ -48,7 +49,7 @@ Prefer minimal, targeted changes that preserve the existing architecture. Follow
 
 Use `pytest`. Put fast isolated tests in `tests/unit/` and MongoDB-backed or end-to-end coverage in `tests/integration/`. Name test files `test_*.py` and test functions `test_*`. Add focused regression tests near the affected module, for example `tests/unit/chunkstore/` for `arctic/chunkstore/` changes. If an integration test needs external services, state that clearly in the PR.
 
-GitHub Actions currently runs `nox` unit, integration-smoke, and full MongoDB-backed integration sessions on Python 3.10 through 3.13. MongoDB jobs use MongoDB 4.4.18 through a GitHub Actions service container. Full integration is blocking in CI, so keep local verification focused before pushing.
+GitHub Actions currently runs `nox` mypy, unit, integration-smoke, and full MongoDB-backed integration sessions. Unit and integration jobs run on Python 3.10 through 3.13; mypy runs once against the configured Python 3.10 target. MongoDB jobs use MongoDB 4.4.18 through a GitHub Actions service container. Full integration is blocking in CI, so keep local verification focused before pushing.
 
 Benchmarking is deferred to a later stage. The existing ASV and manual benchmark scripts in `benchmarks/` are stale, partly MongoDB-backed, and not suitable for required CI until they are modernized for the supported Python versions and isolated test data.
 

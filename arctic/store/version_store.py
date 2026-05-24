@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime as dt, timedelta, timezone
+from typing import Any
 
 import bson
 import pymongo
@@ -20,7 +21,7 @@ from ..hooks import log_exception
 logger = logging.getLogger(__name__)
 
 VERSION_STORE_TYPE = 'VersionStore'
-_TYPE_HANDLERS = []
+_TYPE_HANDLERS: list[Any] = []
 ARCTIC_VERSION = None
 ARCTIC_VERSION_NUMERICAL = None
 

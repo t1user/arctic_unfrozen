@@ -17,9 +17,20 @@ def _run_pytest(session, default_path):
     session.run("python", "-m", "pytest", *_pytest_args(default_path, session.posargs))
 
 
+def _run_mypy(session):
+    session.install("setuptools>=68", "wheel")
+    session.install("-e", ".[dev]", "--no-build-isolation")
+    session.run("python", "-m", "mypy", *(session.posargs or []))
+
+
 @nox.session
 def unit(session):
     _run_pytest(session, "tests/unit")
+
+
+@nox.session
+def mypy(session):
+    _run_mypy(session)
 
 
 @nox.session

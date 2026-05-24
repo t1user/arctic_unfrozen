@@ -20,7 +20,8 @@ def authenticate(db, user, password):
     return False
 
 
-Credential = namedtuple("MongoCredentials", ['database', 'user', 'password'])
+MongoCredentials = namedtuple("MongoCredentials", ['database', 'user', 'password'])
+Credential = MongoCredentials
 
 
 def get_auth(host, app_name, database_name):

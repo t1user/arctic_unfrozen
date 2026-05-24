@@ -41,7 +41,7 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
 
 - Add type annotations opportunistically in touched files.
 - Start with leaf modules and utility code before central storage APIs.
-- Use focused `mypy` checks where full-repo typing is still noisy.
+- Keep `python -m nox -s mypy` passing for the `arctic` package before broadening type strictness.
 - Avoid type-only refactors that obscure behavior changes.
 
 ## 6. Revisit Benchmarks Later

@@ -14,8 +14,6 @@ from .._config import MAX_DOCUMENT_SIZE
 from .._util import NP_OBJECT_DTYPE
 from ..exceptions import ArcticSerializationException
 
-ABC = abc.ABCMeta('ABC', (object,), {})
-
 log = logging.getLogger(__name__)
 
 
@@ -25,7 +23,7 @@ def incremental_checksum(item, curr_sha=None):
     return curr_sha
 
 
-class LazyIncrementalSerializer(ABC):
+class LazyIncrementalSerializer(object, metaclass=abc.ABCMeta):
     def __init__(self, serializer, input_data, chunk_size):
         if chunk_size < 1:
             raise ArcticSerializationException("LazyIncrementalSerializer can't be initialized "

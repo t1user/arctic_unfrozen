@@ -1,9 +1,9 @@
 import bisect
+import itertools
 import logging
 import re
 from collections import namedtuple
 from datetime import datetime as dt, date, time, timedelta
-from timeit import itertools
 
 import pandas as pd
 import pymongo
