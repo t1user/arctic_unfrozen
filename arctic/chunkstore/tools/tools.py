@@ -1,11 +1,12 @@
 from itertools import groupby
+from typing import Any
 
 import pymongo
 
 from arctic.chunkstore.chunkstore import SYMBOL, SEGMENT, START
 
 
-def segment_id_repair(library, symbol=None):
+def segment_id_repair(library: Any, symbol: str | list[str] | None = None) -> list[str]:
     """
     Ensure that symbol(s) have contiguous segment ids
 
@@ -34,8 +35,8 @@ def segment_id_repair(library, symbol=None):
     for sym in symbol:
         cursor = library._collection.find({SYMBOL: sym}, sort=by_segment)
         # group by chunk
-        for _, segments in groupby(cursor, key=lambda x: (x[START], x[SYMBOL])):
-            segments = list(segments)
+        for _, segment_iter in groupby(cursor, key=lambda x: (x[START], x[SYMBOL])):
+            segments = list(segment_iter)
             # if the start segment is not 0, we need to fix this symbol
             if segments[0][SEGMENT] == -1:
                 # since the segment is part of the index, we have to clean up first

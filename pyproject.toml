@@ -116,6 +116,7 @@ module = [
     "arctic.chunkstore._chunker",
     "arctic.chunkstore.date_chunker",
     "arctic.chunkstore.passthrough_chunker",
+    "arctic.chunkstore.tools.tools",
     "arctic.chunkstore.utils",
     "arctic._cache",
     "arctic._compression",
