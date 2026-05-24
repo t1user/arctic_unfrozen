@@ -2,7 +2,9 @@ import argparse
 import logging
 import os
 import pwd
+from collections.abc import Callable, Sequence
 from multiprocessing import Pool
+from typing import Any, cast
 
 import pandas as pd
 
@@ -18,8 +20,8 @@ logger = logging.getLogger(__name__)
 USER = pwd.getpwuid(os.getuid())[0]
 
 
-def copy_symbols_helper(src, dest, log, force, splice):
-    def _copy_symbol(symbols):
+def copy_symbols_helper(src: Any, dest: Any, log: str, force: bool, splice: bool) -> Callable[[Sequence[str]], None]:
+    def _copy_symbol(symbols: Sequence[str]) -> None:
         for symbol in symbols:
             with ArcticTransaction(dest, symbol, USER, log) as mt:
                 existing_data = dest.has_symbol(symbol)
@@ -39,11 +41,19 @@ def copy_symbols_helper(src, dest, log, force, splice):
 
                 if existing_data and splice:
                     original_data = dest.read(symbol).data
-                    preserve_start = to_pandas_closed_closed(DateRange(None, new_data.index[0].to_pydatetime(),
-                                                                       interval=CLOSED_OPEN)).end
-                    preserve_end = to_pandas_closed_closed(DateRange(new_data.index[-1].to_pydatetime(),
-                                                                     None,
-                                                                     interval=OPEN_CLOSED)).start
+                    preserve_start_range = cast(
+                        DateRange,
+                        to_pandas_closed_closed(DateRange(None, new_data.index[0].to_pydatetime(),
+                                                          interval=CLOSED_OPEN)),
+                    )
+                    preserve_end_range = cast(
+                        DateRange,
+                        to_pandas_closed_closed(DateRange(new_data.index[-1].to_pydatetime(),
+                                                          None,
+                                                          interval=OPEN_CLOSED)),
+                    )
+                    preserve_start = preserve_start_range.end
+                    preserve_end = preserve_end_range.start
                     if not original_data.index.tz:
                         # No timezone on the original, should we even allow this?
                         preserve_start = preserve_start.replace(tzinfo=None)
@@ -56,7 +66,7 @@ def copy_symbols_helper(src, dest, log, force, splice):
     return _copy_symbol
 
 
-def main():
+def main() -> None:
     usage = """
     Copy data from one MongoDB instance to another.
 
@@ -81,10 +91,10 @@ def main():
     logger.info("Copying data from %s -> %s" % (opts.src, opts.dest))
 
     # Prune the list of symbols from the library according to the list of symbols.
-    required_symbols = set()
+    required_symbols_set: set[str] = set()
     for symbol in opts.symbols:
-        required_symbols.update(src.list_symbols(regex=symbol))
-    required_symbols = sorted(required_symbols)
+        required_symbols_set.update(src.list_symbols(regex=symbol))
+    required_symbols = sorted(required_symbols_set)
 
     logger.info("Copying: {} symbols".format(len(required_symbols)))
     if len(required_symbols) < 1:
@@ -98,7 +108,7 @@ def main():
         logger.info("Starting: {} jobs".format(opts.parallel))
         pool = Pool(processes=opts.parallel)
         # Break the jobs into chunks for multiprocessing
-        chunk_size = len(required_symbols) / opts.parallel
+        chunk_size = len(required_symbols) // opts.parallel
         chunk_size = max(chunk_size, 1)
         chunks = [required_symbols[offs:offs + chunk_size] for offs in
                   range(0, len(required_symbols), chunk_size)]

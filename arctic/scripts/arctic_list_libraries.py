@@ -8,7 +8,7 @@ from ..arctic import Arctic
 print = print
 
 
-def main():
+def main() -> None:
     usage = """usage: %prog [options] [prefix ...]
 
     Lists the libraries available in a user's database.   If any prefix parameters

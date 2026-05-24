@@ -8,7 +8,7 @@ from ..auth import get_auth, authenticate
 logger = logging.getLogger(__name__)
 
 
-def do_db_auth(host: str, connection: Any, db_name: str) -> bool:
+def do_db_auth(host: str, connection: Any, db_name: str | None) -> bool:
     """
     Attempts to authenticate against the mongo instance.
 

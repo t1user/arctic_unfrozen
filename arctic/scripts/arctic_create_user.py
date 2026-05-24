@@ -12,7 +12,7 @@ from ..hooks import get_mongodb_uri
 logger = logging.getLogger(__name__)
 
 
-def main():
+def main() -> None:
     usage = """arctic_create_user --host research [--db mongoose_user] [--write] user
 
     Creates the user's personal Arctic mongo database

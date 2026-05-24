@@ -8,7 +8,7 @@ from ..hooks import get_mongodb_uri
 logger = logging.getLogger(__name__)
 
 
-def main():
+def main() -> None:
     usage = """
     Check a Arctic Library for inconsistencies.
     """

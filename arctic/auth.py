@@ -25,7 +25,7 @@ MongoCredentials = namedtuple("MongoCredentials", ['database', 'user', 'password
 Credential = MongoCredentials
 
 
-def get_auth(host: str, app_name: str, database_name: str) -> Any:
+def get_auth(host: str, app_name: str, database_name: str | None) -> Any:
     """
     Authentication hook to allow plugging in custom authentication credential providers
     """
