@@ -1,5 +1,6 @@
 import ast
 import logging
+from typing import Any
 
 import numpy as np
 from bson.binary import Binary
@@ -19,13 +20,13 @@ DTN64_DTYPE = 'datetime64[ns]'
 INDEX_DTYPE = [('datetime', DTN64_DTYPE), ('index', 'i8')]
 
 
-def _dtype_needs_serializability_check(dtype):
+def _dtype_needs_serializability_check(dtype: Any) -> bool:
     return not hasattr(dtype, 'hasobject') or dtype.hasobject
 
 
 class PandasStore(NdarrayStore):
 
-    def _segment_index(self, recarr, existing_index, start, new_segments):
+    def _segment_index(self, recarr: Any, existing_index: Any, start: int, new_segments: Any) -> Binary | None:
         """
         Generate index of datetime64 -> item offset.
 
@@ -50,7 +51,7 @@ class PandasStore(NdarrayStore):
             new_segments = np.array(new_segments, dtype='i8')
             last_rows = recarr[new_segments - start]
             # create numpy index
-            index = np.rec.fromarrays([last_rows[idx_col]] + [new_segments, ], dtype=INDEX_DTYPE)
+            index: Any = np.rec.fromarrays([last_rows[idx_col]] + [new_segments, ], dtype=INDEX_DTYPE)
             # append to existing index if exists
             if existing_index:
                 # existing_index_arr is read-only but it's never written to
@@ -63,7 +64,7 @@ class PandasStore(NdarrayStore):
             raise ArcticException("Could not find datetime64 index in item but existing data contains one")
         return None
 
-    def _datetime64_index(self, recarr):
+    def _datetime64_index(self, recarr: Any) -> Any:
         """ Given a np.recarray find the first datetime64 column """
         # TODO: Handle multi-indexes
         names = recarr.dtype.names
@@ -72,10 +73,13 @@ class PandasStore(NdarrayStore):
                 return name
         return None
 
-    def read_options(self):
+    @staticmethod
+    def read_options() -> list[str]:
         return ['date_range']
 
-    def _index_range(self, version, symbol, date_range=None, **kwargs):
+    def _index_range(
+        self, version: Any, symbol: Any, from_version: Any = None, date_range: Any = None, **kwargs: Any
+    ) -> Any:
         """ Given a version, read the segment_index and return the chunks associated
         with the date_range. As the segment index is (id -> last datetime)
         we need to take care in choosing the correct chunks. """
@@ -91,9 +95,9 @@ class PandasStore(NdarrayStore):
                 idxstart = min(np.searchsorted(dts, start), len(dts) - 1)
                 idxend = min(np.searchsorted(dts, end, side='right'), len(dts) - 1)
                 return int(index['index'][idxstart]), int(index['index'][idxend] + 1)
-        return super(PandasStore, self)._index_range(version, symbol, **kwargs)
+        return super(PandasStore, self)._index_range(version, symbol, from_version=from_version, **kwargs)
 
-    def _daterange(self, recarr, date_range):
+    def _daterange(self, recarr: Any, date_range: Any) -> Any:
         """ Given a recarr, slice out the given artic.date.DateRange if a
         datetime64 index exists """
         idx = self._datetime64_index(recarr)
@@ -105,14 +109,22 @@ class PandasStore(NdarrayStore):
             return recarr[mask.values.astype(bool)]
         return recarr
 
-    def read(self, arctic_lib, version, symbol, read_preference=None, date_range=None, **kwargs):
+    def read(
+        self,
+        arctic_lib: Any,
+        version: Any,
+        symbol: Any,
+        read_preference: Any = None,
+        date_range: Any = None,
+        **kwargs: Any,
+    ) -> Any:
         item = super(PandasStore, self).read(arctic_lib, version, symbol, read_preference,
                                              date_range=date_range, **kwargs)
         if date_range:
             item = self._daterange(item, date_range)
         return item
 
-    def get_info(self, version):
+    def get_info(self, version: dict[str, Any]) -> dict[str, Any]:
         """
         parses out the relevant information in version
         and returns it to the user in a dictionary
@@ -124,7 +136,7 @@ class PandasStore(NdarrayStore):
         return ret
 
 
-def _start_end(date_range, dts):
+def _start_end(date_range: Any, dts: Any) -> tuple[Any, Any]:
     """
     Return tuple: [start, end] of np.datetime64 dates that are inclusive of the passed
     in datetimes.
@@ -138,7 +150,7 @@ def _start_end(date_range, dts):
     return start, end
 
 
-def _assert_no_timezone(date_range):
+def _assert_no_timezone(date_range: Any) -> None:
     for _dt in (date_range.start, date_range.end):
         if _dt and _dt.tzinfo is not None:
             raise ValueError("DateRange with timezone not supported")
@@ -149,10 +161,10 @@ class PandasSeriesStore(PandasStore):
     SERIALIZER = SeriesSerializer()
 
     @staticmethod
-    def can_write_type(data):
+    def can_write_type(data: Any) -> bool:
         return isinstance(data, Series)
 
-    def can_write(self, version, symbol, data):
+    def can_write(self, version: Any, symbol: str, data: Any) -> bool:
         if self.can_write_type(data):
             # Series has always a single-column
             if _dtype_needs_serializability_check(data.dtype) or _dtype_needs_serializability_check(data.index.dtype):
@@ -160,19 +172,50 @@ class PandasSeriesStore(PandasStore):
             return True
         return False
 
-    def write(self, arctic_lib, version, symbol, item, previous_version):
+    def write(
+        self,
+        arctic_lib: Any,
+        version: Any,
+        symbol: Any,
+        item: Any,
+        previous_version: Any,
+        dtype: Any = None,
+    ) -> Any:
         item, md = self.SERIALIZER.serialize(item)
         super(PandasSeriesStore, self).write(arctic_lib, version, symbol, item, previous_version, dtype=md)
 
-    def append(self, arctic_lib, version, symbol, item, previous_version, **kwargs):
+    def append(
+        self,
+        arctic_lib: Any,
+        version: Any,
+        symbol: Any,
+        item: Any,
+        previous_version: Any,
+        dtype: Any = None,
+        dirty_append: Any = False,
+        **kwargs: Any,
+    ) -> Any:
         item, md = self.SERIALIZER.serialize(item)
-        super(PandasSeriesStore, self).append(arctic_lib, version, symbol, item, previous_version, dtype=md, **kwargs)
+        super(PandasSeriesStore, self).append(
+            arctic_lib, version, symbol, item, previous_version, dtype=md, dirty_append=dirty_append, **kwargs
+        )
 
-    def read_options(self):
-        return super(PandasSeriesStore, self).read_options()
+    @staticmethod
+    def read_options() -> list[str]:
+        return PandasStore.read_options()
 
-    def read(self, arctic_lib, version, symbol, **kwargs):
-        item = super(PandasSeriesStore, self).read(arctic_lib, version, symbol, **kwargs)
+    def read(
+        self,
+        arctic_lib: Any,
+        version: Any,
+        symbol: Any,
+        read_preference: Any = None,
+        date_range: Any = None,
+        **kwargs: Any,
+    ) -> Series:
+        item = super(PandasSeriesStore, self).read(
+            arctic_lib, version, symbol, read_preference, date_range=date_range, **kwargs
+        )
         # Try to check if force_bytes_to_unicode is set in kwargs else use the config value (which defaults to False)
         force_bytes_to_unicode = kwargs.get('force_bytes_to_unicode', FORCE_BYTES_TO_UNICODE)
         return self.SERIALIZER.deserialize(item, force_bytes_to_unicode=force_bytes_to_unicode)
@@ -183,10 +226,10 @@ class PandasDataFrameStore(PandasStore):
     SERIALIZER = DataFrameSerializer()
 
     @staticmethod
-    def can_write_type(data):
+    def can_write_type(data: Any) -> bool:
         return isinstance(data, DataFrame)
 
-    def can_write(self, version, symbol, data):
+    def can_write(self, version: Any, symbol: str, data: Any) -> bool:
         if self.can_write_type(data):
             if any(_dtype_needs_serializability_check(dtype) for dtype in data.dtypes.values) or \
                     _dtype_needs_serializability_check(data.index.dtype):
@@ -194,19 +237,50 @@ class PandasDataFrameStore(PandasStore):
             return True
         return False
 
-    def write(self, arctic_lib, version, symbol, item, previous_version):
+    def write(
+        self,
+        arctic_lib: Any,
+        version: Any,
+        symbol: Any,
+        item: Any,
+        previous_version: Any,
+        dtype: Any = None,
+    ) -> Any:
         item, md = self.SERIALIZER.serialize(item)
         super(PandasDataFrameStore, self).write(arctic_lib, version, symbol, item, previous_version, dtype=md)
 
-    def append(self, arctic_lib, version, symbol, item, previous_version, **kwargs):
+    def append(
+        self,
+        arctic_lib: Any,
+        version: Any,
+        symbol: Any,
+        item: Any,
+        previous_version: Any,
+        dtype: Any = None,
+        dirty_append: Any = False,
+        **kwargs: Any,
+    ) -> Any:
         item, md = self.SERIALIZER.serialize(item)
-        super(PandasDataFrameStore, self).append(arctic_lib, version, symbol, item, previous_version, dtype=md, **kwargs)
+        super(PandasDataFrameStore, self).append(
+            arctic_lib, version, symbol, item, previous_version, dtype=md, dirty_append=dirty_append, **kwargs
+        )
 
-    def read(self, arctic_lib, version, symbol, **kwargs):
-        item = super(PandasDataFrameStore, self).read(arctic_lib, version, symbol, **kwargs)
+    def read(
+        self,
+        arctic_lib: Any,
+        version: Any,
+        symbol: Any,
+        read_preference: Any = None,
+        date_range: Any = None,
+        **kwargs: Any,
+    ) -> DataFrame:
+        item = super(PandasDataFrameStore, self).read(
+            arctic_lib, version, symbol, read_preference, date_range=date_range, **kwargs
+        )
         # Try to check if force_bytes_to_unicode is set in kwargs else use the config value (which defaults to False)
         force_bytes_to_unicode = kwargs.get('force_bytes_to_unicode', FORCE_BYTES_TO_UNICODE)
         return self.SERIALIZER.deserialize(item, force_bytes_to_unicode=force_bytes_to_unicode)
 
-    def read_options(self):
-        return super(PandasDataFrameStore, self).read_options()
+    @staticmethod
+    def read_options() -> list[str]:
+        return PandasStore.read_options()
