@@ -7,7 +7,7 @@ from typing import cast
 import pandas as pd
 
 from ._daterange import DateRange
-from ._generalslice import OPEN_OPEN, CLOSED_CLOSED, OPEN_CLOSED, CLOSED_OPEN
+from ._generalslice import OPEN_OPEN, CLOSED_CLOSED, OPEN_CLOSED, CLOSED_OPEN, Intervals
 from ._mktz import mktz
 from ._parse import parse
 
@@ -20,7 +20,7 @@ Ranges = {"()": OPEN_OPEN, "(]": OPEN_CLOSED, "[)": CLOSED_OPEN, "[]": CLOSED_CL
 
 
 def string_to_daterange(
-    str_range: str, delimiter: str = "-", as_dates: bool = False, interval=CLOSED_CLOSED
+    str_range: str, delimiter: str = "-", as_dates: bool = False, interval: Intervals = CLOSED_CLOSED
 ) -> DateRange:
     """
     Convert a string to a DateRange type. If you put only one date, it generates the

@@ -1,13 +1,14 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Any
 
 from ..auth import get_auth, authenticate
 
 logger = logging.getLogger(__name__)
 
 
-def do_db_auth(host, connection, db_name):
+def do_db_auth(host: str, connection: Any, db_name: str) -> bool:
     """
     Attempts to authenticate against the mongo instance.
 
@@ -39,7 +40,7 @@ def do_db_auth(host, connection, db_name):
     return True
 
 
-def setup_logging():
+def setup_logging() -> None:
     """ Logging setup for console scripts
     """
     logging.basicConfig(format='%(asctime)s %(message)s', level='INFO')

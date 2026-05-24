@@ -123,8 +123,11 @@ module = [
     "arctic.date._daterange",
     "arctic.date._generalslice",
     "arctic.date._parse",
+    "arctic.date._util",
     "arctic.decorators",
     "arctic.hooks",
+    "arctic.hosts",
+    "arctic.scripts.utils",
     "arctic.serialization._serializer",
     "arctic.store.versioned_item",
 ]
