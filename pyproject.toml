@@ -115,6 +115,7 @@ warn_unused_ignores = true
 module = [
     "arctic.arctic",
     "arctic.chunkstore._chunker",
+    "arctic.chunkstore.chunkstore",
     "arctic.chunkstore.date_chunker",
     "arctic.chunkstore.passthrough_chunker",
     "arctic.chunkstore.tools.tools",
