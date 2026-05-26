@@ -1,12 +1,31 @@
 from itertools import groupby
-from typing import Any
+from collections.abc import Iterable
+from typing import Any, Protocol
 
 import pymongo
 
 from arctic.chunkstore.chunkstore import SYMBOL, SEGMENT, START
 
 
-def segment_id_repair(library: Any, symbol: str | list[str] | None = None) -> list[str]:
+class _ChunkCollection(Protocol):
+    def find(self, *args: Any, **kwargs: Any) -> Iterable[dict[str, Any]]:
+        ...
+
+    def delete_many(self, *args: Any, **kwargs: Any) -> Any:
+        ...
+
+    def insert_many(self, documents: list[dict[str, Any]]) -> Any:
+        ...
+
+
+class _ChunkLibrary(Protocol):
+    _collection: _ChunkCollection
+
+    def list_symbols(self) -> list[str]:
+        ...
+
+
+def segment_id_repair(library: _ChunkLibrary, symbol: str | list[str] | None = None) -> list[str]:
     """
     Ensure that symbol(s) have contiguous segment ids
 
@@ -22,17 +41,19 @@ def segment_id_repair(library: Any, symbol: str | list[str] | None = None) -> li
     -------
     list of str - Symbols 'fixed'
     """
-    ret = []
+    ret: list[str] = []
 
     if symbol is None:
-        symbol = library.list_symbols()
+        symbols = library.list_symbols()
     elif not isinstance(symbol, list):
-        symbol = [symbol]
+        symbols = [symbol]
+    else:
+        symbols = symbol
 
     by_segment = [(START, pymongo.ASCENDING),
                   (SEGMENT, pymongo.ASCENDING)]
 
-    for sym in symbol:
+    for sym in symbols:
         cursor = library._collection.find({SYMBOL: sym}, sort=by_segment)
         # group by chunk
         for _, segment_iter in groupby(cursor, key=lambda x: (x[START], x[SYMBOL])):
