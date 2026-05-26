@@ -1,9 +1,12 @@
 import datetime
-from typing import Any
+from typing import Any, TypeAlias, TypeGuard
 
 
-from ._generalslice import OPEN_OPEN, CLOSED_CLOSED, OPEN_CLOSED, CLOSED_OPEN, GeneralSlice
+from ._generalslice import OPEN_OPEN, CLOSED_CLOSED, OPEN_CLOSED, CLOSED_OPEN, GeneralSlice, Intervals
 from ._parse import parse
+
+DateBound: TypeAlias = datetime.datetime | datetime.date
+DateRangeInput: TypeAlias = int | str | bytes | DateBound | None
 
 INTERVAL_LOOKUP = {(True, True): OPEN_OPEN,
                    (False, False): CLOSED_CLOSED,
@@ -48,12 +51,12 @@ class DateRange(GeneralSlice):
                CLOSED_CLOSED, OPEN_CLOSED, CLOSED_OPEN or OPEN_OPEN.
                **Default is CLOSED_CLOSED**.
     """
-    def __init__(self, start: Any = None, end: Any = None, interval: Any = CLOSED_CLOSED) -> None:
+    def __init__(self, start: DateRangeInput = None, end: DateRangeInput = None, interval: Intervals = CLOSED_CLOSED) -> None:
 
-        def _is_dt_type(x: Any) -> bool:
+        def _is_dt_type(x: object) -> TypeGuard[DateBound]:
             return isinstance(x, (datetime.datetime, datetime.date))
 
-        def _compute_bound(value: Any, desc: str) -> datetime.datetime | datetime.date | None:
+        def _compute_bound(value: DateRangeInput, desc: str) -> DateBound | None:
             if isinstance(value, bytes):
                 return parse(value.decode('ascii'))
             elif isinstance(value, (int, str)):
@@ -111,7 +114,7 @@ class DateRange(GeneralSlice):
         new_end = self.end.date() if self.end and isinstance(self.end, datetime.datetime) else self.end
         return DateRange(new_start, new_end, CLOSED_CLOSED)
 
-    def mongo_query(self) -> dict[str, datetime.datetime | datetime.date]:
+    def mongo_query(self) -> dict[str, DateBound]:
         """
         Convert a DateRange into a MongoDb query string. FIXME: Mongo can only handle
         datetimes in queries, so we should make this handle the case where start/end are
@@ -127,7 +130,7 @@ class DateRange(GeneralSlice):
             query['$l' + comp[1]] = self.end
         return query
 
-    def get_date_bounds(self) -> tuple[str, datetime.datetime | datetime.date | None, str, datetime.datetime | datetime.date | None]:
+    def get_date_bounds(self) -> tuple[str, DateBound | None, str, DateBound | None]:
         """
         Return the upper and lower bounds along
         with operators that are needed to do an 'in range' test.
@@ -155,7 +158,7 @@ class DateRange(GeneralSlice):
 
         return date_gt, start, date_lt, end
 
-    def __contains__(self, d: datetime.datetime | datetime.date) -> bool:
+    def __contains__(self, d: DateBound) -> bool:
         if self.interval == CLOSED_CLOSED:
             return (self.start is None or d >= self.start) and (self.end is None or d <= self.end)
         elif self.interval == CLOSED_OPEN:
@@ -183,7 +186,7 @@ class DateRange(GeneralSlice):
     def __hash__(self) -> int:
         return hash((self.start, self.end, self.step, self.interval))
 
-    def __getitem__(self, key: int) -> datetime.datetime | datetime.date | None:
+    def __getitem__(self, key: int) -> DateBound | None:
         if key == 0:
             return self.start
         elif key == 1:
