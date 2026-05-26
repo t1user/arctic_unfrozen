@@ -1795,13 +1795,14 @@ def test_fwpointers_mixed_scenarios(library, write_cfg, read_cfg, append_cfg, re
             assert last_v.get('append_count', 0) == 0
 
     orig_check_written = arctic.store._ndarray_store.NdarrayStore.check_written
-    outer = {'round': -1,     # unfortunately "nonlocal" keyword is not available in Python 2, this is a workaround
-             'raised': False}
+    round_counter = -1
+    raised = False
 
     def _mock_check_written(self, collection, symbol, version):
-        outer['round'] += 1
-        if outer['round'] % 2 == 0:
-            outer['raised'] = True
+        nonlocal round_counter, raised
+        round_counter += 1
+        if round_counter % 2 == 0:
+            raised = True
             raise pymongo.errors.OperationFailure("Failed to write all the chunks. Mocked failure.")
         orig_check_written(collection, symbol, version)
 
@@ -1835,7 +1836,7 @@ def test_fwpointers_mixed_scenarios(library, write_cfg, read_cfg, append_cfg, re
         with FwPointersCtx(reread_cfg):
             assert_frame_equal_(mydf, library.read(symbol=symbol).data)
 
-    assert outer['raised']
+    assert raised
 
 
 def test_fwpointers_writemetadata_enabled_disabled(library):

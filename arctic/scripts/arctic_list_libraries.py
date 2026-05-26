@@ -1,12 +1,7 @@
-from __future__ import print_function
-
 import optparse
 
 from .utils import setup_logging
 from ..arctic import Arctic
-
-print = print
-
 
 def main() -> None:
     usage = """usage: %prog [options] [prefix ...]

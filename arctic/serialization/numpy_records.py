@@ -331,14 +331,14 @@ class SeriesSerializer(PandasSerializer):
                 data = data.astype('unicode')
 
             if isinstance(index, MultiIndex):
-                unicode_indexes: list[Any] = []
+                text_indexes: list[Any] = []
                 # MultiIndex requires a conversion at each level.
                 for level in range(len(index.levels)):
                     _index = index.get_level_values(level)
                     if isinstance(_index[0], bytes):
                         _index = _index.astype('unicode')
-                    unicode_indexes.append(_index)
-                index = unicode_indexes
+                    text_indexes.append(_index)
+                index = text_indexes
             else:
                 if len(index) and type(index[0]) == bytes:
                     index = index.astype('unicode')
@@ -392,11 +392,6 @@ class DataFrameSerializer(PandasSerializer):
             df.columns = MultiIndex.from_arrays(multi_column["values"], names=multi_column["names"])
 
         if force_bytes_to_unicode:
-            # This is needed due to 'str' type in py2 when read back in py3 is 'bytes' which breaks the workflow
-            # of people migrating to py3. # https://github.com/manahl/arctic/issues/598
-            # This should not be used for a normal flow, and you should instead of writing unicode strings
-            # if you want to work with str in py3.,
-
             for c in [column for column, dtype in df.dtypes.items() if dtype == NP_OBJECT_DTYPE]:
                 # The conversion is not using astype similar to the index as pandas has a bug where it tries to convert
                 # the data columns to a unicode string, and the object in this case would be bytes, eg. b'abc'
@@ -407,14 +402,14 @@ class DataFrameSerializer(PandasSerializer):
                     df[c] = df[c].str.decode('utf-8')
 
             if isinstance(df.index, MultiIndex):
-                unicode_indexes: list[Any] = []
+                text_indexes: list[Any] = []
                 # MultiIndex requires a conversion at each level.
                 for level in range(len(df.index.levels)):
                     _index = df.index.get_level_values(level)
                     if isinstance(_index[0], bytes):
                         _index = _index.astype('unicode')
-                    unicode_indexes.append(_index)
-                df.index = unicode_indexes
+                    text_indexes.append(_index)
+                df.index = text_indexes
             else:
                 if type(df.index[0]) == bytes:
                     df.index = df.index.astype('unicode')

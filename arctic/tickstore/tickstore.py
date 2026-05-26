@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import copy
 import logging
 from datetime import datetime as dt, timedelta
@@ -697,12 +695,10 @@ class TickStore(object):
             array = array.astype('<f8')
         elif array.dtype.kind in ('O', 'U', 'S'):
             if array.dtype.kind == 'O' and infer_dtype(array) not in ['unicode', 'string', 'bytes']:
-                # `string` in python2 and `bytes` in python3
                 raise UnhandledDtypeException("Casting object column to string failed")
             try:
                 array = array.astype(np.str_)
             except (UnicodeDecodeError, SystemError):
-                # `UnicodeDecodeError` in python2 and `SystemError` in python3
                 array = np.array([s.decode('utf-8') for s in array])
             except:
                 raise UnhandledDtypeException("Only unicode and utf8 strings are supported.")

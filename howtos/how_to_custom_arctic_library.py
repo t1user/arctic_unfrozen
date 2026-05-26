@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from datetime import datetime as dt
 
 from bson.binary import Binary

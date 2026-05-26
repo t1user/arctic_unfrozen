@@ -1,8 +1,4 @@
-from __future__ import print_function
-try:
-    import cStringIO as stringio
-except ImportError:
-    import io as stringio
+import io
 import sys
 from contextlib import contextmanager
 from datetime import datetime as dt
@@ -19,10 +15,7 @@ def assert_frame_equal_(df1, df2, check_freq=True, check_names=True):
     if pandas.__version__ >= '1.1.0':
         assert_frame_equal(df1.sort_index(axis=1), df2.sort_index(axis=1), check_names=check_names, check_freq=check_freq)
     else:
-        # python 3.x
         assert_frame_equal(df1.sort_index(axis=1), df2.sort_index(axis=1), check_names=check_names)
-    #else: # python 2.7
-        #assert_frame_equal(df1, df2)
 
 # check_freq default True added in pandas 1.1.0
 def assert_series_equal_(s1, s2, check_freq=True):
@@ -42,7 +35,7 @@ def dt_or_str_parser(string):
 def read_str_as_pandas(ts_str, num_index=1):
     labels = [x.strip() for x in ts_str.split('\n')[0].split('|')]
     pd = pandas.read_csv(
-        stringio.StringIO(ts_str),
+        io.StringIO(ts_str),
         sep='|',
         index_col=list(range(num_index)),
         converters={i: dt_or_str_parser for i in range(num_index)},

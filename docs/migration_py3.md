@@ -1,6 +1,7 @@
-# Python 3 Migration Gotchas
+# Python 3 Compatibility Notes
 
-The aim of this document is to help with possible migration issues with Arctic when moving to python3.
+This document records compatibility issues that may affect Arctic on supported
+Python 3 versions.
 
 ## Trying to store numpy types with bson
 
@@ -15,8 +16,8 @@ Currently if you try and store (say) a numpy integer in BSONStore you will get a
 
 InvalidDocument: Cannot encode object: 1
 ```
-This is because in python3, numpy types are not json / bson serializable anymore and it throws a rather confusing 
-error message which is fixed in py3.7: https://jira.mongodb.org/browse/PYTHON-1664
+This is because numpy scalar types are not JSON/BSON serializable and can produce
+confusing errors in older PyMongo versions: https://jira.mongodb.org/browse/PYTHON-1664
 
 Arctic does not do the conversion to int from numpy.int types and you should ensure you convert it before passing
 the parameters to insert / update functions in BSONStore or wherever there is a bson.encode involved
@@ -26,11 +27,10 @@ the parameters to insert / update functions in BSONStore or wherever there is a 
 Python 2 compatibility is no longer a target for this revived package. Do not
 expect data written by current Python 3 versions to be readable from Python 2.
 
-## Strings in column/index names are converted to bytes in py3
+## Byte strings in column or index names
 
-As mentioned here: https://github.com/manahl/arctic/blob/master/arctic/serialization/numpy_records.py#L277 this can
-break workflows when reading old byte-string data.
+Byte-string data or labels can break workflows that expect text strings.
 
 If you hit this issue, a workaround is to set: [FORCE_BYTES_TO_UNICODE](https://github.com/manahl/arctic/blob/master/arctic/_config.py#L92)
-which will explicitly convert stuff to unicode, but keep in mind it's not very efficient and is basically doing
-a linear conversion. 
+which will explicitly convert byte values and labels to text. This conversion is
+linear and should not be used for normal write/read flows.

@@ -52,13 +52,13 @@ def enable_sharding(arctic: Any, library_name: str, hashed: bool = True, key: st
     -----------
     arctic: `arctic.Arctic` Arctic class
 
-    library_name: `basestring` library name
+    library_name: `str` library name
 
     hashed: `bool` if True, use hashed sharding, if False, use range sharding
             See https://docs.mongodb.com/manual/core/hashed-sharding/,
             as well as https://docs.mongodb.com/manual/core/ranged-sharding/ for details.
 
-    key: `basestring` key to be used for sharding. Defaults to 'symbol', applicable to
+    key: `str` key to be used for sharding. Defaults to 'symbol', applicable to
          all of Arctic's built-in stores except for BSONStore, which typically uses '_id'.
          See https://docs.mongodb.com/manual/core/sharding-shard-key/ for details.
     """
