@@ -4,13 +4,13 @@ import bson
 import numpy as np
 import pytest
 from mock import patch
-from pymongo.server_type import SERVER_TYPE
+from pymongo import ReadPreference
 
 from arctic._config import FwPointersCfg, FW_POINTERS_REFS_KEY
 from arctic._util import mongo_count
 from arctic.store._ndarray_store import NdarrayStore
 from arctic.store.version_store import register_versioned_storage
-from tests.integration.store.test_version_store import _query, FwPointersCtx
+from tests.integration.store.test_version_store import FwPointersCtx
 
 register_versioned_storage(NdarrayStore)
 
@@ -38,14 +38,14 @@ def test_save_read_simple_ndarray(library):
     assert np.all(ndarr == saved_arr)
 
 
-@pytest.mark.xfail(reason="code paths in mongo/pymongo have changed and query no longer called")
 def test_read_simple_ndarray_from_secondary(library_secondary, library_name):
     ndarr = np.ones(1000)
     library_secondary.write('MYARR', ndarr)
-    with patch('pymongo.message.query', side_effect=_query(True, library_name)) as query, \
-         patch('pymongo.server_description.ServerDescription.server_type', SERVER_TYPE.Mongos):
+    with patch.object(
+        library_secondary._versions, 'with_options', wraps=library_secondary._versions.with_options
+    ) as versions_with_options:
         saved_arr = library_secondary.read('MYARR').data
-    assert query.call_count > 0
+    versions_with_options.assert_any_call(read_preference=ReadPreference.NEAREST)
     assert np.all(ndarr == saved_arr)
 
 

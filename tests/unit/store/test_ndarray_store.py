@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from mock import create_autospec, sentinel, call
+from mock import Mock, create_autospec, sentinel, call
 from pymongo.collection import Collection
 from pymongo.results import UpdateResult
 from pytest import raises
@@ -70,6 +70,25 @@ def test_promote_dtype_throws_if_column_is_removed():
 
     with raises(Exception):
         _promote_struct_dtypes(dtype1, dtype2)
+
+
+def test_read_uses_requested_read_preference():
+    store = NdarrayStore()
+    arctic_lib = Mock()
+    collection = Mock()
+    arctic_lib.get_top_level_collection.return_value = collection
+    store._do_read = Mock(return_value=sentinel.data)
+
+    result = store.read(arctic_lib, sentinel.version, sentinel.symbol, read_preference=sentinel.read_preference)
+
+    assert result == sentinel.data
+    collection.with_options.assert_called_once_with(read_preference=sentinel.read_preference)
+    store._do_read.assert_called_once_with(
+        collection.with_options.return_value,
+        sentinel.version,
+        sentinel.symbol,
+        index_range=(None, None),
+    )
 
 
 def test_concat_and_rewrite_checks_chunk_count():

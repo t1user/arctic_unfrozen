@@ -11,6 +11,7 @@ import pymongo
 import pytest
 from mock import Mock, patch
 from pandas.testing import assert_frame_equal, assert_series_equal
+from pymongo import ReadPreference
 from pymongo.errors import OperationFailure
 from pymongo.server_type import SERVER_TYPE
 
@@ -136,14 +137,15 @@ def test_store_item_read_preference(library_secondary, library_name):
     assert query.call_count > 0
 
 
-@pytest.mark.xfail(reason="mongo/pymongo codepaths have changed, query no longer called for this")
 def test_read_item_read_preference_SECONDARY(library_secondary, library_name):
     # write an item
     library_secondary.write(symbol, ts1)
-    with patch('pymongo.message.query', side_effect=_query(True, library_name)) as query, \
-         patch('pymongo.server_description.ServerDescription.server_type', SERVER_TYPE.Mongos):
+    with patch.object(
+        library_secondary._versions, 'with_options', wraps=library_secondary._versions.with_options
+    ) as versions_with_options:
         library_secondary.read(symbol)
-    assert query.call_count > 0
+
+    versions_with_options.assert_any_call(read_preference=ReadPreference.NEAREST)
 
 
 @pytest.mark.parametrize('fw_pointers_cfg', [FwPointersCfg.DISABLED, FwPointersCfg.HYBRID, FwPointersCfg.ENABLED])
