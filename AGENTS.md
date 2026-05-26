@@ -53,7 +53,7 @@ Use `pytest`. Put fast isolated tests in `tests/unit/` and MongoDB-backed or end
 
 GitHub Actions currently runs `nox` mypy, unit, integration-smoke, and full MongoDB-backed integration sessions. Unit and integration jobs run on Python 3.10 through 3.13; mypy runs once against the configured Python 3.10 target. MongoDB jobs use MongoDB 4.4.18 through a GitHub Actions service container. Full integration is blocking in CI, so keep local verification focused before pushing.
 
-Current xfails are intentional compatibility gaps, not expected green tests: read-preference tests still depend on old PyMongo query internals, `test_no_index_labels` preserves a known index-name mismatch, the tickstore spanning-library roundtrip has datetime-resolution drift, direct `pytz` timezone attachment remains broken, and the Python 2 pickle fixture is not compatible with Python 3 text-mode loading.
+Current xfails are intentional compatibility gaps, not expected green tests: the tickstore spanning-library roundtrip still has datetime-resolution drift. Python 2 compatibility is no longer a project target; do not add new compatibility shims for Python 2-only data or runtimes.
 
 Benchmarking is deferred to a later stage. The existing ASV and manual benchmark scripts in `benchmarks/` are stale, partly MongoDB-backed, and not suitable for required CI until they are modernized for the supported Python versions and isolated test data.
 

@@ -34,7 +34,7 @@ dependencies = [
     "numpy",
     "python-dateutil",
     "pymongo<4",
-    "pytz",
+    "tzdata; platform_system == 'Windows'",
     "tzlocal",
     "lz4",
 ]

@@ -26,6 +26,9 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
 - Preserve the public `arctic` package name and existing import paths.
 - Prefer compatibility shims or focused rewrites over large architectural
   changes.
+- Python 2 compatibility is no longer a target. Remove Python 2-only fixtures,
+  skips, and compatibility branches when they are touched, while preserving
+  Python 3 data compatibility.
 - Document any intentional API break before making it.
 
 ## 4. Restore Integration Confidence

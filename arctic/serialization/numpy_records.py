@@ -82,6 +82,8 @@ def consistent_get_timezone_str(tz: Union[datetime.tzinfo, str]) -> str:
     """
     if isinstance(tz, str):
         return tz
+    if hasattr(tz, "key"):
+        return str(tz.key)
 
     # The behaviour of Pandas' `get_timezone()` for UTC `tzinfo`s differs across versions.
     # This is due to either changes to the underlying `is_utc()` function, or the behaviour when it returns `True`.

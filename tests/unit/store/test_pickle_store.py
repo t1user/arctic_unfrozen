@@ -1,7 +1,3 @@
-import sys
-from os import path
-from pandas.util.version import Version
-
 import pandas as pd
 import pytest
 from bson.binary import Binary
@@ -13,8 +9,6 @@ from arctic._compression import compress, compressHC
 from arctic.exceptions import UnsupportedPickleStoreVersion
 from arctic.store._pickle_store import PickleStore
 from arctic.store._version_store_utils import checksum
-
-PANDAS_VERSION = Version(pd.__version__)
 
 
 def test_write():
@@ -87,35 +81,6 @@ def test_read_with_base_version_id():
 
     assert PickleStore.read(self, arctic_lib, version, sentinel.symbol) == object
     assert coll.find.call_args_list == [call({'symbol': sentinel.symbol, 'parent': sentinel.base_version_id})]
-
-
-@pytest.mark.xfail(sys.version_info >= (3,),
-                   reason="lz4 data written with python2 not compatible with python3")
-def test_read_backward_compatibility():
-    """Test backwards compatibility with a pickled file that's created with Python 2.7.3,
-    Numpy 1.7.1_ahl2 and Pandas 0.14.1
-    """
-    fname = path.join(path.dirname(__file__), "data", "test-data.pkl")
-
-    # For newer versions; verify that unpickling fails when using cPickle
-    if PANDAS_VERSION >= Version("0.16.1"):
-        if sys.version_info[0] >= 3:
-            with pytest.raises(UnicodeDecodeError), open(fname) as fh:
-                pickle.load(fh)
-        else:
-            with pytest.raises(TypeError), open(fname) as fh:
-                pickle.load(fh)
-
-    # Verify that PickleStore() uses a backwards compatible unpickler.
-    store = PickleStore()
-
-    with open(fname) as fh:
-        # PickleStore compresses data with lz4
-        version = {'blob': compressHC(fh.read())}
-    df = store.read(sentinel.arctic_lib, version, sentinel.symbol)
-
-    expected = pd.DataFrame(range(4), pd.date_range(start="20150101", periods=4))
-    assert (df == expected).all().all()
 
 
 def test_unpickle_highest_protocol():

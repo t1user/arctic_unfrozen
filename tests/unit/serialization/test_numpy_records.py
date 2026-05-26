@@ -1,10 +1,10 @@
 import datetime
 import re
+from zoneinfo import ZoneInfo
 
 import dateutil
 import numpy as np
 import pandas as pd
-import pytz
 import pytest
 from mock import patch, Mock, sentinel
 from numpy.testing import assert_array_equal
@@ -116,12 +116,12 @@ def test_can_convert_to_records_without_objects_returns_true_otherwise(fast_seri
     ["tz", "expected_tz_str_pat"],
     [
         ("UTC", r"^UTC$"),
-        (pytz.utc, r"^UTC$"),
+        (ZoneInfo("UTC"), r"^UTC$"),
         (dateutil.tz.tzutc(), r"^UTC$"),
         (dateutil.tz.gettz("UTC"), r"^dateutil/.+UTC"),
         *([(datetime.timezone.utc, r"^UTC$")] if hasattr(datetime, "timezone") else []),
-        (pytz.timezone("Europe/London"), r"^Europe/London$"),
-        (pytz.timezone("America/New_York"), r"^America/New_York$"),
+        (ZoneInfo("Europe/London"), r"^Europe/London$"),
+        (ZoneInfo("America/New_York"), r"^America/New_York$"),
         (dateutil.tz.gettz("Europe/London"), r"^dateutil/.+Europe/London"),
         (dateutil.tz.gettz("America/New_York"), r"^dateutil/.+America/New_York"),
     ],

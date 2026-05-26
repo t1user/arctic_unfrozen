@@ -1,7 +1,7 @@
 import datetime
+from zoneinfo import ZoneInfo
 
 import pytest
-import pytz
 
 from arctic.date import mktz, datetime_to_ms, ms_to_datetime
 
@@ -17,14 +17,14 @@ def assert_roundtrip(tz):
 
 
 def get_tz():
-    tz = pytz.timezone("Europe/London")
+    tz = ZoneInfo("Europe/London")
     tmp = ms_to_datetime(0, tz)
     tz = tmp.tzinfo
     return tz
 
 
 def test_UTC_roundtrip():
-    tz = pytz.timezone("UTC")
+    tz = ZoneInfo("UTC")
     assert_roundtrip(tz)
 
 
@@ -33,10 +33,8 @@ def test_weird_get_tz_local():
     assert_roundtrip(tz)
 
 
-@pytest.mark.xfail
-def test_pytz_London():
-    # Don't use pytz
-    tz = pytz.timezone("Europe/London")
+def test_zoneinfo_London():
+    tz = ZoneInfo("Europe/London")
     assert_roundtrip(tz)
 
 
@@ -81,6 +79,6 @@ def test_datetime_roundtrip_est_tz():
     (807675, 1074069004807)
 ])
 def test_millisecond_conversion(microseconds, expected):
-    pdt = datetime.datetime(2004, 1, 14, 8, 30, 4, microseconds, tzinfo=pytz.utc)
+    pdt = datetime.datetime(2004, 1, 14, 8, 30, 4, microseconds, tzinfo=ZoneInfo("UTC"))
     pdt2 = datetime_to_ms(pdt)
     assert pdt2 == expected
