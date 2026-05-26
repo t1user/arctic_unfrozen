@@ -122,19 +122,21 @@ def test_store_item_new_version(library, library_name):
         assert mongo_count(coll.versions) == 2
 
 
-@pytest.mark.xfail(reason="mongo/pymongo codepaths have changed, query no longer called for this")
-def test_store_item_read_preference(library_secondary, library_name):
-    with patch('arctic.arctic.ArcticLibraryBinding.check_quota'), \
-         patch('pymongo.message.query', side_effect=_query(False, library_name)) as query, \
-         patch('pymongo.server_description.ServerDescription.server_type', SERVER_TYPE.Mongos):
+def test_store_item_read_preference(library_secondary):
+    with patch('arctic.arctic.ArcticLibraryBinding.check_quota'), patch.object(
+        library_secondary._versions, 'with_options', wraps=library_secondary._versions.with_options
+    ) as versions_with_options:
         # write an item
         library_secondary.write(symbol, ts1)
         library_secondary.write(symbol, ts1_append, prune_previous_version=False)
         # delete an individual version
         library_secondary._delete_version(symbol, 1)
-    # delete the item entirely
-    library_secondary.delete(symbol)
-    assert query.call_count > 0
+        # delete the item entirely
+        library_secondary.delete(symbol)
+
+    read_preferences = [call.kwargs.get('read_preference') for call in versions_with_options.call_args_list]
+    assert ReadPreference.NEAREST not in read_preferences
+    assert ReadPreference.PRIMARY in read_preferences
 
 
 def test_read_item_read_preference_SECONDARY(library_secondary, library_name):
