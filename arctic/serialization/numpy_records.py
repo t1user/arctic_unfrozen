@@ -113,13 +113,14 @@ def consistent_get_timezone_str(tz: Union[datetime.tzinfo, str]) -> str:
     return str(get_timezone(tz))
 
 
-def _multi_index_to_records(index: Any, empty_index: bool) -> tuple[list[Any], list[Any], list[str | None]]:
+def _multi_index_to_records(index: Any, empty_index: bool) -> tuple[list[Any], list[Any], list[str | None], list[Any]]:
     # array of tuples to numpy cols. copy copy copy
     if not empty_index:
         ix_vals = list(map(np.array, [index.get_level_values(i) for i in range(index.nlevels)]))
     else:
         # empty multi index has no size, create empty arrays for recarry.
         ix_vals = [np.array([]) for n in index.names]
+    original_index_names = list(index.names)
     index_names = list(index.names)
     count = 0
     for i, n in enumerate(index_names):
@@ -134,7 +135,7 @@ def _multi_index_to_records(index: Any, empty_index: bool) -> tuple[list[Any], l
         else:
             index_tz.append(None)
 
-    return ix_vals, index_names, index_tz
+    return ix_vals, index_names, index_tz, original_index_names
 
 
 class PandasSerializer(object):
@@ -145,12 +146,15 @@ class PandasSerializer(object):
         index_tz: Union[Optional[str], List[Optional[str]]]
 
         if isinstance(index, MultiIndex):
-            ix_vals, index_names, index_tz = _multi_index_to_records(index, len(df) == 0)
+            ix_vals, index_names, index_tz, original_index_names = _multi_index_to_records(index, len(df) == 0)
+            if original_index_names != index_names:
+                metadata['index_names'] = original_index_names
         else:
             ix_vals = [index.values]
             index_names = list(index.names)
             if index_names[0] is None:
                 index_names = ['index']
+                metadata['index_names'] = [None]
                 log.info("Index has no name, defaulting to 'index'")
             if isinstance(index, DatetimeIndex) and index.tz is not None:
                 index_tz = consistent_get_timezone_str(index.tz)
@@ -165,9 +169,10 @@ class PandasSerializer(object):
 
     def _index_from_records(self, recarr: Any) -> Any:
         index = recarr.dtype.metadata['index']
+        index_names = recarr.dtype.metadata.get('index_names', index)
 
         if len(index) == 1:
-            rtn = Index(np.copy(recarr[str(index[0])]), name=index[0])
+            rtn = Index(np.copy(recarr[str(index[0])]), name=index_names[0])
             if isinstance(rtn, DatetimeIndex) and 'index_tz' in recarr.dtype.metadata:
                 if PD_VER >= '1.0.4':
                     if isinstance(recarr.dtype.metadata['index_tz'], list):
@@ -191,7 +196,7 @@ class PandasSerializer(object):
                         else:
                             level = level.tz_localize('UTC').tz_convert(tz)
                 level_arrays.append(level)
-            rtn = MultiIndex.from_arrays(level_arrays, names=index)
+            rtn = MultiIndex.from_arrays(level_arrays, names=index_names)
         return rtn
 
     def _to_records(
@@ -357,12 +362,12 @@ class DataFrameSerializer(PandasSerializer):
         column_vals = [df[c].values for c in df.columns]
 
         if isinstance(df.columns, MultiIndex):
-            ix_vals, ix_names, _ = _multi_index_to_records(df.columns, False)
+            ix_vals, ix_names, _, column_names = _multi_index_to_records(df.columns, False)
             vals = [list(val) for val in ix_vals]
             str_vals = [list(map(str, val)) for val in ix_vals]
             if vals != str_vals:
                 log.info("Dataframe column names converted to strings")
-            return columns, column_vals, {"names": list(ix_names), "values": str_vals}
+            return columns, column_vals, {"names": list(column_names), "values": str_vals}
         else:
             return columns, column_vals, None
 

@@ -9,6 +9,7 @@ import pytest
 from mock import patch, Mock, sentinel
 from numpy.testing import assert_array_equal
 from pandas import Timestamp
+from pandas.testing import assert_frame_equal
 
 import arctic.serialization.numpy_records as anr
 
@@ -180,6 +181,19 @@ def test_dataframe_serializer_serialize_tz_index(
         ]
         for index_lvl_tz in result_dtype.metadata["index_tz"]:
             assert re.search(expected_tz_str_pat, index_lvl_tz)
+
+
+def test_dataframe_serializer_roundtrips_unnamed_index():
+    serializer = anr.DataFrameSerializer()
+    df = pd.DataFrame(index=[datetime.datetime(2012, 1, 1), datetime.datetime(2012, 1, 2)],
+                      data={'data': [1., 2.]})
+
+    result_records, result_dtype = serializer.serialize(df)
+    records_with_metadata = np.array(result_records.tolist(), dtype=result_dtype)
+
+    assert result_dtype.metadata["index"] == ["index"]
+    assert result_dtype.metadata["index_names"] == [None]
+    assert_frame_equal(serializer.deserialize(records_with_metadata), df)
 
 
 @pytest.mark.parametrize("fast_serializable_check", (False, True))

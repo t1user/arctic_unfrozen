@@ -687,7 +687,6 @@ def test_no_labels(library):
     assert_frame_equal(ts1, ts2)
 
 
-@pytest.mark.xfail(reason='needs investigating')
 def test_no_index_labels(library):
     ts1 = DataFrame(index=[dt(2012, 1, 1), dt(2012, 1, 2)],
                     data={'data': [1., 2.]})
