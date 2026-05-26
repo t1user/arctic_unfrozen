@@ -37,7 +37,7 @@ def indent(s: str, num_spaces: int) -> str:
 def are_equals(o1: Any, o2: Any, **kwargs: Any) -> bool:
     try:
         if isinstance(o1, DataFrame):
-            assert_frame_equal(o1, o2, kwargs)
+            assert_frame_equal(o1, o2, **kwargs)
             return True
         return o1 == o2
     except Exception:
