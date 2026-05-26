@@ -1,6 +1,5 @@
-from datetime import datetime as dt
 import pandas as pd
-import sys
+from datetime import datetime as dt
 
 import pytest
 from mock import patch
@@ -134,21 +133,16 @@ def test_utc_dt_to_local_dt():
 
 
 def test_pandas_timestamp_issue():
-    # test to illustrate how pandas.Timestamp.utctimetuple is broken python>=3.8
+    # test to illustrate how pandas.Timestamp.utctimetuple is broken on supported Python versions
     # see arctic.date._util.datetime_to_ms
 
     ts = pd.Timestamp("2020-11-27 16:00:00-0500", tz="US/Eastern")
 
-    if sys.version_info < (3, 8, 0):
-        assert(ts.utctimetuple().tm_hour == 21)
-        assert(ts.timetuple().tm_hour == 16)
-        assert(ts.to_pydatetime().timetuple().tm_hour == 16)
+    assert(ts.to_pydatetime().utctimetuple().tm_hour == 21)
+    assert(ts.timetuple().tm_hour == 16)
+    try:
+        ts.utctimetuple()
+    except TypeError:
+        pass
     else:
-        assert(ts.to_pydatetime().utctimetuple().tm_hour == 21)
-        assert(ts.timetuple().tm_hour == 16)
-        try:
-            ts.utctimetuple()
-        except TypeError:
-            pass
-        else:
-            assert(ts.utctimetuple().tm_hour == 21)
+        assert(ts.utctimetuple().tm_hour == 21)
