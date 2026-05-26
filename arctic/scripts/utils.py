@@ -33,8 +33,10 @@ def do_db_auth(host: str, connection: Any, db_name: str | None) -> bool:
     elif not authenticate(connection.admin, admin_creds.user, admin_creds.password):
         logger.error("Failed to authenticate to '%s' as Admin. Giving up." % (host))
         return False
-    # Ensure we attempt to auth against the user DB, for non-priviledged users to get access
-    authenticate(connection[db_name], user_creds.user, user_creds.password)
+    # Ensure we attempt to auth against the user DB when credentials exist;
+    # non-privileged admin users may not have access to the target DB.
+    if user_creds is not None:
+        authenticate(connection[db_name], user_creds.user, user_creds.password)
     return True
 
 
