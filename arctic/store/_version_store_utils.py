@@ -2,7 +2,7 @@ import functools
 import hashlib
 import logging
 import pickle
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Any, Callable, IO
 
 import numpy as np
@@ -150,7 +150,7 @@ def cleanup(
     _cleanup_mixed(symbol, collection, version_ids, versions_coll)
 
 
-def version_base_or_id(version: dict[str, Any]) -> Any:
+def version_base_or_id(version: Mapping[str, Any]) -> Any:
     return version.get('base_version_id', version['_id'])
 
 

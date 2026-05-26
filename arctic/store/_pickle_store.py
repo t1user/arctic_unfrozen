@@ -1,7 +1,8 @@
 import io
 import logging
+from collections.abc import Iterable, MutableMapping
 from operator import itemgetter
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 import bson
 from bson.binary import Binary
@@ -24,19 +25,32 @@ logger = logging.getLogger(__name__)
 _MAX_BSON_ENCODE = cast(int, MAX_BSON_ENCODE)
 
 
+class _PickleCollection(Protocol):
+    def find(self, *args: Any, **kwargs: Any) -> Iterable[dict[str, Any]]:
+        ...
+
+    def update_one(self, *args: Any, **kwargs: Any) -> Any:
+        ...
+
+
+class _ArcticLibrary(Protocol):
+    def get_top_level_collection(self) -> _PickleCollection:
+        ...
+
+
 class PickleStore(object):
 
     @classmethod
-    def initialize_library(cls, *args: Any, **kwargs: Any) -> None:
+    def initialize_library(cls, *_args: Any, **_kwargs: Any) -> None:
         pass
 
-    def get_info(self, _version: Any) -> dict[str, str]:
+    def get_info(self, _version: object) -> dict[str, str]:
         return {
             'type': 'blob',
             'handler': self.__class__.__name__,
         }
 
-    def read(self, mongoose_lib: Any, version: dict[str, Any], symbol: Any, **kwargs: Any) -> Any:
+    def read(self, mongoose_lib: _ArcticLibrary, version: MutableMapping[str, Any], symbol: Any, **_kwargs: Any) -> Any:
         blob = version.get("blob")
         if blob is not None:
             if blob == _MAGIC_CHUNKEDV2:
@@ -63,10 +77,17 @@ class PickleStore(object):
         return version['data']
 
     @staticmethod
-    def read_options() -> list[Any]:
+    def read_options() -> list[str]:
         return []
 
-    def write(self, arctic_lib: Any, version: dict[str, Any], symbol: Any, item: Any, _previous_version: Any) -> None:
+    def write(
+        self,
+        arctic_lib: _ArcticLibrary,
+        version: MutableMapping[str, Any],
+        symbol: Any,
+        item: Any,
+        _previous_version: object,
+    ) -> None:
         # Currently we try to bson encode if the data is less than a given size and store it in
         # the version collection, but pickling might be preferable if we have characters that don't
         # play well with the bson encoder or if you always want your data in the data collection.
