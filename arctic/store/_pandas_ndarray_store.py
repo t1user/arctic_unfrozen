@@ -130,7 +130,7 @@ class PandasStore(NdarrayStore):
         and returns it to the user in a dictionary
         """
         ret = super(PandasStore, self).get_info(version)
-        ret['col_names'] = version['dtype_metadata']
+        ret['col_names'] = {k: v for k, v in version['dtype_metadata'].items() if k != 'index_names'}
         ret['handler'] = self.__class__.__name__
         ret['dtype'] = ast.literal_eval(version['dtype'])
         return ret

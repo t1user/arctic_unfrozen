@@ -362,12 +362,12 @@ class DataFrameSerializer(PandasSerializer):
         column_vals = [df[c].values for c in df.columns]
 
         if isinstance(df.columns, MultiIndex):
-            ix_vals, ix_names, _, column_names = _multi_index_to_records(df.columns, False)
+            ix_vals, ix_names, _, _ = _multi_index_to_records(df.columns, False)
             vals = [list(val) for val in ix_vals]
             str_vals = [list(map(str, val)) for val in ix_vals]
             if vals != str_vals:
                 log.info("Dataframe column names converted to strings")
-            return columns, column_vals, {"names": list(column_names), "values": str_vals}
+            return columns, column_vals, {"names": list(ix_names), "values": str_vals}
         else:
             return columns, column_vals, None
 
