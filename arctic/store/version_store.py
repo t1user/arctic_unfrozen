@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime as dt, timedelta, timezone
-from typing import Any
+from typing import Any, cast
 
 import bson
 import pymongo
@@ -19,6 +19,11 @@ from ..exceptions import NoDataFoundException, DuplicateSnapshotException, \
 from ..hooks import log_exception
 
 logger = logging.getLogger(__name__)
+
+AsOf = str | int | dt | None
+Metadata = dict[str, Any]
+VersionDoc = dict[str, Any]
+VersionId = Any
 
 VERSION_STORE_TYPE = 'VersionStore'
 _TYPE_HANDLERS: list[Any] = []
@@ -179,7 +184,7 @@ class VersionStore(object):
             except TypeError:
                 raise NoDataFoundException('No snapshot %s in library %s' % (snapshot, self._arctic_lib.get_name()))
         elif all_symbols:
-            return self._versions.find(query).distinct('symbol')
+            return cast(list[str], self._versions.find(query).distinct('symbol'))
 
         # Return just the symbols which aren't deleted in the 'trunk' of this library
         pipeline: list[dict[str, Any]] = []
@@ -199,7 +204,7 @@ class VersionStore(object):
         return sorted([x['_id'] for x in self._versions.aggregate(pipeline, allowDiskUse=True)])
 
     @mongo_retry
-    def has_symbol(self, symbol: str, as_of: Any = None) -> bool:
+    def has_symbol(self, symbol: str, as_of: AsOf = None) -> bool:
         """
         Return True if the 'symbol' exists in this library AND the symbol
         isn't deleted in the specified as_of.
@@ -301,7 +306,7 @@ class VersionStore(object):
                                  'snapshots': [snapshots[s] for s in version.get('parent', []) if s in snapshots]})
         return versions
 
-    def _find_snapshots(self, parent_ids: list[Any]) -> list[str]:
+    def _find_snapshots(self, parent_ids: list[VersionId]) -> list[str]:
         snapshots = []
         for p in parent_ids:
             snap = self._snapshots.find_one({'_id': p})
@@ -311,7 +316,7 @@ class VersionStore(object):
                 snapshots.append(str(p))
         return snapshots
 
-    def _read_handler(self, version: dict[str, Any], symbol: str) -> Any:
+    def _read_handler(self, version: VersionDoc, symbol: str) -> Any:
         handler = None
         for h in _TYPE_HANDLERS:
             if h.can_read(version, symbol):
@@ -325,10 +330,10 @@ class VersionStore(object):
     def handler_can_write_type(handler: Any, data: Any) -> bool:
         type_method = getattr(handler, "can_write_type", None)
         if callable(type_method):
-            return type_method(data)
+            return cast(bool, type_method(data))
         return False
 
-    def _write_handler(self, version: dict[str, Any], symbol: str, data: Any, **kwargs: Any) -> Any:
+    def _write_handler(self, version: VersionDoc, symbol: str, data: Any, **kwargs: Any) -> Any:
         handler = None
         for h in _TYPE_HANDLERS:
             if h.can_write(version, symbol, data, **kwargs):
@@ -344,7 +349,7 @@ class VersionStore(object):
     def read(
         self,
         symbol: str,
-        as_of: Any = None,
+        as_of: AsOf = None,
         date_range: Any = None,
         from_version: Any = None,
         allow_secondary: bool | None = None,
@@ -397,7 +402,7 @@ class VersionStore(object):
             raise
 
     @mongo_retry
-    def get_info(self, symbol: str, as_of: Any = None) -> dict[str, Any]:
+    def get_info(self, symbol: str, as_of: AsOf = None) -> dict[str, Any]:
         """
         Reads and returns information about the data stored for symbol
 
@@ -418,7 +423,7 @@ class VersionStore(object):
         version = self._read_metadata(symbol, as_of=as_of, read_preference=None)
         handler = self._read_handler(version, symbol)
         if handler and hasattr(handler, 'get_info'):
-            return handler.get_info(version)
+            return cast(dict[str, Any], handler.get_info(version))
         return {}
 
     @staticmethod
@@ -431,7 +436,7 @@ class VersionStore(object):
         # that it does support this option (i.e. fail-open)
         return True
 
-    def get_arctic_version(self, symbol: str, as_of: Any = None) -> int:
+    def get_arctic_version(self, symbol: str, as_of: AsOf = None) -> int:
         """
         Return the numerical representation of the arctic version used to write the last (or as_of) version for
         the given symbol.
@@ -451,12 +456,12 @@ class VersionStore(object):
         arctic_version : int
             The numerical representation of Arctic version, used to create the specified symbol version
         """
-        return self._read_metadata(symbol, as_of=as_of).get('arctic_version', 0)
+        return cast(int, self._read_metadata(symbol, as_of=as_of).get('arctic_version', 0))
 
     def _do_read(
         self,
         symbol: str,
-        version: dict[str, Any],
+        version: VersionDoc,
         from_version: Any = None,
         **kwargs: Any,
     ) -> VersionedItem:
@@ -480,7 +485,7 @@ class VersionStore(object):
     def read_metadata(
         self,
         symbol: str,
-        as_of: Any = None,
+        as_of: AsOf = None,
         allow_secondary: bool | None = None,
     ) -> VersionedItem:
         """
@@ -507,7 +512,7 @@ class VersionStore(object):
                              metadata=_version.pop('metadata', None), data=None,
                              host=self._arctic_lib.arctic.mongo_host)
 
-    def _read_metadata(self, symbol: str, as_of: Any = None, read_preference: Any = None) -> dict[str, Any]:
+    def _read_metadata(self, symbol: str, as_of: AsOf = None, read_preference: Any = None) -> VersionDoc:
         if read_preference is None:
             # We want to hit the PRIMARY if querying secondaries is disabled.  If we're allowed to query secondaries,
             # then we want to hit the secondary for metadata.  We maintain ordering of chunks vs. metadata, such that
@@ -543,9 +548,9 @@ class VersionStore(object):
         if metadata is not None and metadata.get('deleted', False) is True:
             raise NoDataFoundException("No data found for %s in library %s" % (symbol, self._arctic_lib.get_name()))
 
-        return _version
+        return cast(VersionDoc, _version)
 
-    def _insert_version(self, version: dict[str, Any]) -> None:
+    def _insert_version(self, version: VersionDoc) -> None:
         try:
             # Keep here the mongo_retry to avoid incrementing versions and polluting the DB with garbage segments,
             # upon intermittent Mongo errors
@@ -561,7 +566,7 @@ class VersionStore(object):
         self,
         symbol: str,
         data: Any,
-        metadata: dict[str, Any] | None = None,
+        metadata: Metadata | None = None,
         prune_previous_version: bool = True,
         upsert: bool = True,
         **kwargs: Any,
@@ -659,7 +664,7 @@ class VersionStore(object):
         self,
         symbol: str,
         data: Any,
-        metadata: dict[str, Any] | None = None,
+        metadata: Metadata | None = None,
         prune_previous_version: bool = True,
         **kwargs: Any,
     ) -> VersionedItem:
@@ -720,8 +725,8 @@ class VersionStore(object):
     def _add_new_version_using_reference(
         self,
         symbol: str,
-        new_version: dict[str, Any],
-        reference_version: dict[str, Any],
+        new_version: VersionDoc,
+        reference_version: VersionDoc,
         prune_previous_version: bool,
     ) -> VersionedItem:
         # Attention: better not use this method following an append.
@@ -770,7 +775,7 @@ class VersionStore(object):
     def write_metadata(
         self,
         symbol: str,
-        metadata: dict[str, Any] | None,
+        metadata: Metadata | None,
         prune_previous_version: bool = True,
         **kwargs: Any,
     ) -> VersionedItem:
@@ -821,7 +826,7 @@ class VersionStore(object):
         return self._add_new_version_using_reference(symbol, version, previous_version, prune_previous_version)
 
     @mongo_retry
-    def restore_version(self, symbol: str, as_of: Any, prune_previous_version: bool = True) -> VersionedItem:
+    def restore_version(self, symbol: str, as_of: AsOf, prune_previous_version: bool = True) -> VersionedItem:
         """
         Restore the specified 'symbol' data and metadata to the state of a given version/snapshot/date.
         Returns a VersionedItem object only with a metadata element.
@@ -870,7 +875,7 @@ class VersionStore(object):
         return new_item
 
     @mongo_retry
-    def _find_prunable_version_ids(self, symbol: str, keep_mins: int) -> dict[Any, tuple[list[Any], Any]]:
+    def _find_prunable_version_ids(self, symbol: str, keep_mins: int) -> dict[VersionId, tuple[list[Any], Any]]:
         """
         Find all non-snapshotted versions of a symbol that are older than a version that's at least keep_mins
         minutes old.
@@ -904,7 +909,7 @@ class VersionStore(object):
                 for v in cursor}
 
     @mongo_retry
-    def _find_base_version_ids(self, symbol: str, version_ids: list[Any]) -> list[Any]:
+    def _find_base_version_ids(self, symbol: str, version_ids: list[VersionId]) -> list[VersionId]:
         """
         Return all base_version_ids for a symbol that are not bases of version_ids
         """
@@ -919,7 +924,7 @@ class VersionStore(object):
         self,
         symbol: str,
         keep_mins: int = 120,
-        keep_version: Any = None,
+        keep_version: VersionId = None,
         new_version_shas: list[Any] | None = None,
     ) -> None:
         """
@@ -1032,9 +1037,9 @@ class VersionStore(object):
     def snapshot(
         self,
         snap_name: str,
-        metadata: dict[str, Any] | None = None,
+        metadata: Metadata | None = None,
         skip_symbols: list[str] | None = None,
-        versions: dict[str, Any] | None = None,
+        versions: dict[str, AsOf] | None = None,
     ) -> None:
         """
         Snapshot versions of symbols in the library.  Can be used like:
