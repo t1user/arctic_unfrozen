@@ -34,7 +34,9 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
 ## 4. Restore Integration Confidence
 
 - Separate fast unit tests from MongoDB-backed integration tests.
-- Define a repeatable local MongoDB setup for integration testing.
+- Use an ephemeral Docker MongoDB instance on a non-live port for repeatable local
+  integration testing. Never point the destructive integration fixtures at a
+  server containing valuable data.
 - Keep MongoDB-backed integration smoke tests blocking in CI across the
   supported Python matrix.
 - Keep the full integration suite blocking in CI now that it is green across

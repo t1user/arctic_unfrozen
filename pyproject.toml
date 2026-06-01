@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "arctic_refrozen"
+name = "arctic_unfrozen"
 version = "1.83.1"
 description = "Versioned TimeSeries and Tick store forked from AHL Research's Arctic"
 dynamic = ["readme"]
@@ -62,7 +62,7 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/t1user/arctic_refrozen"
+Homepage = "https://github.com/t1user/arctic_unfrozen"
 
 [project.scripts]
 arctic_init_library = "arctic.scripts.arctic_init_library:main"

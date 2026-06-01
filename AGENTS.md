@@ -14,7 +14,7 @@ Testing: pytest
 
 ## Project Structure & Module Organization
 
-This repository contains the legacy `arctic` Python package, now in maintenance mode. Core library code lives under `arctic/`, with major areas split into `chunkstore/`, `tickstore/`, `store/`, `serialization/`, `date/`, `asynchronous/`, and command-line entry points in `arctic/scripts/`. Tests are under `tests/`, separated into `tests/unit/` and `tests/integration/`. Documentation is in `docs/`, examples are in `howtos/`, performance work is in `benchmarks/`, and logo assets are in `logo/`.
+This repository contains Arctic Unfrozen, the maintained distribution of the legacy `arctic` Python package. Keep the import package named `arctic` for compatibility. Core library code lives under `arctic/`, with major areas split into `chunkstore/`, `tickstore/`, `store/`, `serialization/`, `date/`, `asynchronous/`, and command-line entry points in `arctic/scripts/`. Tests are under `tests/`, separated into `tests/unit/` and `tests/integration/`. Documentation is in `docs/`, examples are in `howtos/`, performance work is in `benchmarks/`, and logo assets are in `logo/`.
 
 ## Build, Test, and Development Commands
 
@@ -24,6 +24,7 @@ This repository contains the legacy `arctic` Python package, now in maintenance 
 - `python -m nox -s unit`: run the unit-test CI session on the active Python.
 - `python -m nox -s mypy`: run the strict type-checking CI session for the `arctic` package. It rejects untyped definitions, untyped calls, bare generics, implicit optionals, and implicit `Any` returns.
 - `python -m nox -s integration`: run the MongoDB-backed integration-test CI session on the active Python. Without `ARCTIC_TEST_MONGO_HOST`, this starts a local `mongod` if available.
+- `docker run --rm -d --name arctic-unfrozen-test -p 127.0.0.1:27018:27017 mongodb/mongodb-community-server:8.3.2-ubi9-slim`: start an isolated ephemeral MongoDB container for local integration tests. Run tests with `ARCTIC_TEST_MONGO_HOST=localhost:27018 python -m nox -s integration`, then stop it with `docker stop arctic-unfrozen-test`.
 - `python -m nox -s unit_matrix integration_matrix`: run the full local Python matrix only before high-risk pushes or when explicitly requested. It is too slow for routine edit cycles.
 - `python -m pytest tests/unit/test_auth.py`: run a focused test file or directory.
 - `git diff --check`: catch whitespace and conflict-marker issues before committing.
@@ -51,7 +52,7 @@ Prefer minimal, targeted changes that preserve the existing architecture. Follow
 
 Use `pytest`. Put fast isolated tests in `tests/unit/` and MongoDB-backed or end-to-end coverage in `tests/integration/`. Name test files `test_*.py` and test functions `test_*`. Add focused regression tests near the affected module, for example `tests/unit/chunkstore/` for `arctic/chunkstore/` changes. If an integration test needs external services, state that clearly in the PR.
 
-GitHub Actions currently runs `nox` mypy, unit, integration-smoke, and full MongoDB-backed integration sessions. Unit and integration jobs run on Python 3.10 through 3.13; mypy runs once against the configured Python 3.10 target. MongoDB jobs use MongoDB 4.4.18 through a GitHub Actions service container. Full integration is blocking in CI, so keep local verification focused before pushing.
+GitHub Actions currently runs `nox` mypy, unit, integration-smoke, and full MongoDB-backed integration sessions. Unit and integration jobs run on Python 3.10 through 3.13; mypy runs once against the configured Python 3.10 target. MongoDB jobs use MongoDB 4.4.18 through a GitHub Actions service container. Full integration is blocking in CI, so keep local verification focused before pushing. Integration tests erase every non-system database on the configured server. Point `ARCTIC_TEST_MONGO_HOST` only at a disposable test instance, never at a live MongoDB server.
 
 Current xfails are intentional compatibility gaps, not expected green tests: the tickstore spanning-library roundtrip still has datetime-resolution drift. Python 2 compatibility is no longer a project target; do not add new compatibility shims for Python 2-only data or runtimes.
 
