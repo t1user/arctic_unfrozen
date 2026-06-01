@@ -1,10 +1,44 @@
 ## Changelog
 
 ### Unreleased
- * Project: rename the maintained distribution to Arctic Unfrozen.
- * Docs: explain the relationship to ArcticDB and document isolated local MongoDB integration testing.
- * Compatibility: require PyMongo 4.17 or newer and test against MongoDB 8.3.2.
- * Compatibility: replace removed PyMongo count and user-creation APIs.
+
+This is the first Arctic Unfrozen modernization cycle. It keeps the established
+`arctic` import package and stored-data model while moving the maintained
+distribution onto a current Python and MongoDB stack.
+
+#### Project and packaging
+ * Project: rename the maintained distribution to `arctic_unfrozen`. Existing applications continue to import `arctic`.
+ * Packaging: move active package metadata and dependency declarations into `pyproject.toml`.
+ * Docs: explain the relationship to Man Group's ArcticDB successor and document why MongoDB-backed Arctic remains useful for existing deployments.
+ * Docs: retain the original Arctic documentation as the primary reference while it is refreshed.
+
+#### Supported runtime stack
+ * Compatibility: support and test Python 3.10 through 3.13. Python 2 runtimes and Python 2-only serialized data are no longer compatibility targets.
+ * Compatibility: remove obsolete Python 2 shims and stale pandas `Panel` compatibility paths.
+ * Compatibility: replace `pytz` usage with the standard-library `zoneinfo` implementation and retain `tzdata` for Windows.
+ * Compatibility: update code paths for current pandas and NumPy releases, including removed NumPy aliases, pandas sorting behavior, index metadata handling, dataframe comparisons, and timezone behavior.
+ * Compatibility: require `pymongo>=4.17,<5` and test MongoDB-backed behavior against MongoDB 8.3.2.
+
+#### PyMongo 4 and MongoDB 8.3
+ * Compatibility: replace removed post-connect `Database.authenticate()` calls with credentials supplied when constructing `MongoClient`.
+ * Compatibility: preserve Arctic credential hooks by creating and caching authenticated clients per MongoDB database when required.
+ * Compatibility: replace removed PyMongo collection count and user-creation APIs with supported equivalents.
+ * Compatibility: remove deprecated positional arguments to `list_collection_names()` and use explicit `is None` checks instead of unsupported PyMongo collection truthiness.
+ * Tests: remove regression-test dependencies on private PyMongo query internals while retaining public read-preference coverage.
+
+#### CI, development, and verification
+ * CI: replace the legacy CI setup with GitHub Actions and `nox` sessions that contributors can run locally.
+ * CI: run unit tests and MongoDB-backed integration smoke tests on Python 3.10, 3.11, 3.12, and 3.13.
+ * CI: make the full MongoDB-backed integration suite blocking across the supported Python matrix.
+ * CI: use isolated MongoDB 8.3.2 service containers with a health check and `nofile=64000:64000` limit for WiredTiger.
+ * Development: document an ephemeral Docker MongoDB workflow for local integration tests. Integration fixtures erase non-system databases, so they must never target a live server.
+ * Tooling: consolidate active pytest, Black, flake8, and mypy configuration in `pyproject.toml`.
+
+#### Typing and maintenance policy
+ * Typing: annotate the maintained `arctic` package and add mypy as a blocking CI check.
+ * Typing: reject untyped definitions, untyped calls, bare generics, implicit optionals, and implicit `Any` return values. New and modified code should preserve this baseline.
+ * Testing: keep known compatibility gaps explicit as `xfail` cases rather than silently skipping regressions.
+ * Benchmarks: defer the stale ASV and manual benchmark suite until it can be modernized and isolated from shared MongoDB state.
 
 ### 1.83.1 (2024-04-08) 
  * Release: #1022 fixes for pandas 2 and latest numpy

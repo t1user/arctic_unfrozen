@@ -9,11 +9,14 @@ data, and `ChunkStore` provides efficient range access to chunked datasets.
 Applications can also register custom library types when the built-in stores
 are not the right fit.
 
-Arctic Unfrozen maintains the established `arctic` Python package. The original
-authors moved active development to
-[ArcticDB](https://github.com/man-group/ArcticDB), a ground-up successor with a
-new storage engine. ArcticDB is the appropriate choice for many new projects,
-but it is not storage-compatible with Arctic.
+Arctic Unfrozen aims to revive the established `Arctic` Python
+package, which was originally created by ManGroup and is currently in
+maintanance mode with very outdated stack. The original authors moved
+active development to
+[ArcticDB](https://github.com/man-group/ArcticDB), a ground-up
+successor with a new storage engine. ArcticDB is the appropriate
+choice for many new projects, but it is not storage-compatible with
+Arctic.
 
 This project keeps Arctic useful for existing deployments and for teams that
 prefer MongoDB. Compared with adopting a different time-series storage system,
