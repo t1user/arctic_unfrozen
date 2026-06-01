@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, cast
 
 from pymongo.errors import CollectionInvalid, OperationFailure
 
@@ -45,7 +45,7 @@ class Cache:
 
     def _get_cache_settings(self) -> dict[str, Any] | None:
         try:
-            return self._cachedb[CACHE_SETTINGS].find_one({'type': CACHE_SETTINGS_KEY})
+            return cast(dict[str, Any] | None, self._cachedb[CACHE_SETTINGS].find_one({'type': CACHE_SETTINGS_KEY}))
         except OperationFailure as op:
             logging.debug("Cannot access %s in db: %s. Error: %s" % (CACHE_SETTINGS, CACHE_DB, op))
         return None
@@ -78,7 +78,7 @@ class Cache:
             cache_settings = self._get_cache_settings()
             expiry_period = cache_settings['cache_expiry'] if cache_settings else DEFAULT_CACHE_EXPIRY
 
-        return _utcnow() < cached_data['date'] + timedelta(seconds=expiry_period)
+        return cast(bool, _utcnow() < cached_data['date'] + timedelta(seconds=expiry_period))
 
     def get(self, key: str, newer_than_secs: int | None = None) -> Any:
         """

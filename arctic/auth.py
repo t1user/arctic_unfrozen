@@ -1,5 +1,5 @@
 import logging
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, cast
 
 from pymongo.errors import OperationFailure
 
@@ -14,7 +14,7 @@ def authenticate(db: Any, user: str, password: str) -> bool:
     """
     try:
         logger.debug("Authenticating {} with {}".format(db, user))
-        return db.authenticate(user, password)
+        return cast(bool, db.authenticate(user, password))
     except OperationFailure as e:
         logger.debug("Auth Error %s" % e)
     return False

@@ -200,7 +200,7 @@ def _define_compat_pickle_load() -> Callable[..., Any]:
     if pd.__version__.startswith("0.14"):
         return pickle.load
     if hasattr(pickle_compat, "load"):
-        return pickle_compat.load
+        return cast(Callable[..., Any], pickle_compat.load)
 
     def load(file_handle: IO[bytes]) -> Any:
         """Load pickled data using pandas' compatibility unpickler."""

@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, TypeAlias, TypeGuard
+from typing import Any, TypeAlias, TypeGuard, cast
 
 
 from ._generalslice import OPEN_OPEN, CLOSED_CLOSED, OPEN_CLOSED, CLOSED_OPEN, GeneralSlice, Intervals
@@ -174,23 +174,23 @@ class DateRange(GeneralSlice):
     def __eq__(self, rhs: object) -> bool:
         if rhs is None or not (hasattr(rhs, "end") and hasattr(rhs, "start")):
             return False
-        return self.end == rhs.end and self.start == rhs.start
+        return cast(bool, self.end == rhs.end and self.start == rhs.start)
 
     def __lt__(self, other: "DateRange") -> bool:
         if self.start is None:
             return True
         if other.start is None:
             return False
-        return self.start < other.start
+        return cast(bool, self.start < other.start)
 
     def __hash__(self) -> int:
         return hash((self.start, self.end, self.step, self.interval))
 
     def __getitem__(self, key: int) -> DateBound | None:
         if key == 0:
-            return self.start
+            return cast(DateBound | None, self.start)
         elif key == 1:
-            return self.end
+            return cast(DateBound | None, self.end)
         else:
             raise IndexError('Index %s not in range (0:1)' % key)
 

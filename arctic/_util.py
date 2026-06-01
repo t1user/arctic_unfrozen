@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pymongo
@@ -39,7 +39,7 @@ def are_equals(o1: Any, o2: Any, **kwargs: Any) -> bool:
         if isinstance(o1, DataFrame):
             assert_frame_equal(o1, o2, **kwargs)
             return True
-        return o1 == o2
+        return cast(bool, o1 == o2)
     except Exception:
         return False
 
@@ -90,10 +90,10 @@ def mongo_count(collection: Any, filter: dict[str, Any] | None = None, **kwargs:
     if _use_new_count_api:
         if filter == {}:
             # fast. uses collection metadata
-            return collection.estimated_document_count(**kwargs)
+            return cast(int, collection.estimated_document_count(**kwargs))
         else:
             # transactions supported, but slow for non-indexed filters
-            return collection.count_documents(filter=filter, **kwargs)
+            return cast(int, collection.count_documents(filter=filter, **kwargs))
     else:
         # pymongo <= 3.6 # faster than count_documents but non-transactional and deprecated
-        return collection.count(filter=filter, **kwargs)
+        return cast(int, collection.count(filter=filter, **kwargs))

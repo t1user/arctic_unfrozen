@@ -7,7 +7,7 @@ try:
     from lz4.block import compress as lz4_compress, decompress as lz4_decompress
 
     def lz4_compressHC(_str: bytes) -> bytes:
-        return lz4_compress(_str, mode='high_compression')
+        return cast(bytes, lz4_compress(_str, mode='high_compression'))
 except ImportError as e:
     from lz4 import (  # type: ignore[no-redef]
         compress as lz4_compress,
@@ -116,7 +116,7 @@ def compress(_str: bytes) -> bytes:
     By default LZ4 mode is standard in interactive mode,
     and high compresion in applications/scripts
     """
-    return lz4_compress(_str)
+    return cast(bytes, lz4_compress(_str))
 
 
 def compressHC(_str: bytes) -> bytes:
@@ -137,7 +137,7 @@ def decompress(_str: bytes) -> bytes:
     """
     Decompress a string
     """
-    return lz4_decompress(_str)
+    return cast(bytes, lz4_decompress(_str))
 
 
 def decompress_array(str_list: Sequence[bytes]) -> list[bytes] | Sequence[bytes]:
