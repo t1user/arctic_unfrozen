@@ -74,11 +74,11 @@ jobs:
 
     services:
       mongo:
-        image: mongo:4.4.18
+        image: mongodb/mongodb-community-server:8.3.2-ubi9-slim
         ports:
           - 27017:27017
         options: >-
-          --health-cmd "mongo --eval 'db.adminCommand(\"ping\")'"
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\")'"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -121,11 +121,11 @@ jobs:
 
     services:
       mongo:
-        image: mongo:4.4.18
+        image: mongodb/mongodb-community-server:8.3.2-ubi9-slim
         ports:
           - 27017:27017
         options: >-
-          --health-cmd "mongo --eval 'db.adminCommand(\"ping\")'"
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\")'"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5

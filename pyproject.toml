@@ -33,7 +33,7 @@ dependencies = [
     "pandas",
     "numpy",
     "python-dateutil",
-    "pymongo<4",
+    "pymongo>=4.17,<5",
     "tzdata; platform_system == 'Windows'",
     "tzlocal",
     "lz4",

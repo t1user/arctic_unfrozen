@@ -1,23 +1,9 @@
 import logging
-from typing import Any, NamedTuple, cast
+from typing import Any, NamedTuple
 
-from pymongo.errors import OperationFailure
+from pymongo import MongoClient
 
 logger = logging.getLogger(__name__)
-
-
-def authenticate(db: Any, user: str, password: str) -> bool:
-    """
-    Return True / False on authentication success.
-
-    PyMongo 2.6 changed the auth API to raise on Auth failure.
-    """
-    try:
-        logger.debug("Authenticating {} with {}".format(db, user))
-        return cast(bool, db.authenticate(user, password))
-    except OperationFailure as e:
-        logger.debug("Auth Error %s" % e)
-    return False
 
 
 class MongoCredentials(NamedTuple):
@@ -35,3 +21,12 @@ def get_auth(host: str, app_name: str, database_name: str | None) -> MongoCreden
     """
     from .hooks import _get_auth_hook
     return _get_auth_hook(host, app_name, database_name)
+
+
+def create_client(host: str, credentials: MongoCredentials | None = None, **kwargs: Any) -> MongoClient[dict[str, Any]]:
+    """Create a Mongo client with optional credentials resolved before connecting."""
+    from .hooks import get_mongodb_uri
+
+    if credentials is not None:
+        kwargs.update(username=credentials.user, password=credentials.password, authSource=credentials.database)
+    return MongoClient(get_mongodb_uri(host), **kwargs)

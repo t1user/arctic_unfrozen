@@ -721,7 +721,7 @@ class NdarrayStore(object):
         # Write
         bulk: list[Any] = []
         for i, chunk in zip(idxs, compressed_chunks):
-            segment = {
+            segment: dict[str, Any] = {
                 'data': Binary(chunk),
                 'compressed': True,
                 'segment': min((i + 1) * rows_per_chunk - 1, length - 1) + segment_offset,

@@ -13,7 +13,7 @@ from pymongo.errors import OperationFailure, AutoReconnect
 from ._cache import Cache
 from ._config import ENABLE_CACHE
 from ._util import indent
-from .auth import authenticate, get_auth
+from .auth import MongoCredentials, get_auth
 from .chunkstore import chunkstore
 from .decorators import mongo_retry
 from .exceptions import LibraryNotFoundException, ArcticException, QuotaExceededException
@@ -122,6 +122,7 @@ class Arctic(object):
         self._pid = os.getpid()
         self._pymongo_kwargs = kwargs
         self._cache: Any = None
+        self._database_connections: dict[str, Any] = {}
 
         if isinstance(mongo_host, str):
             self._given_instance = False
@@ -150,21 +151,10 @@ class Arctic(object):
                 self.reset()  # also triggers re-auth
 
             if self.__conn is None:
-                host = get_mongodb_uri(self.mongo_host)
-                logger.info("Connecting to mongo: {0} ({1})".format(self.mongo_host, host))
-                self.__conn = pymongo.MongoClient(host=host,
-                                                  maxPoolSize=self._MAX_CONNS,
-                                                  socketTimeoutMS=self._socket_timeout,
-                                                  connectTimeoutMS=self._connect_timeout,
-                                                  serverSelectionTimeoutMS=self._server_selection_timeout,
-                                                  **self._pymongo_kwargs)
+                auth = get_auth(self.mongo_host, self._application_name, 'admin')
+                self.__conn = self._create_connection(auth)
                 self._adminDB = self.__conn.admin
                 self._cache = Cache(self.__conn)
-
-                # Authenticate against admin for the user
-                auth = get_auth(self.mongo_host, self._application_name, 'admin')
-                if auth:
-                    authenticate(self._adminDB, auth.user, auth.password)
 
                 # Accessing _conn is synchronous. The new PyMongo driver may be lazier than the previous.
                 # Force a connection.
@@ -172,9 +162,39 @@ class Arctic(object):
 
             return self.__conn
 
+    def _create_connection(self, auth: MongoCredentials | None = None) -> Any:
+        host = get_mongodb_uri(self.mongo_host)
+        logger.info("Connecting to mongo: {0} ({1})".format(self.mongo_host, host))
+        kwargs = dict(self._pymongo_kwargs)
+        if auth is not None:
+            kwargs.update(username=auth.user, password=auth.password, authSource=auth.database)
+        return pymongo.MongoClient(host=host,
+                                   maxPoolSize=self._MAX_CONNS,
+                                   socketTimeoutMS=self._socket_timeout,
+                                   connectTimeoutMS=self._connect_timeout,
+                                   serverSelectionTimeoutMS=self._server_selection_timeout,
+                                   **kwargs)
+
+    def _conn_for(self, database_name: str) -> Any:
+        if self._given_instance:
+            return self._conn
+        if database_name not in self._database_connections:
+            auth = get_auth(self.mongo_host, self._application_name, database_name)
+            if auth is None:
+                self._database_connections[database_name] = self._conn
+            else:
+                connection = self._create_connection(auth)
+                connection.server_info()
+                self._database_connections[database_name] = connection
+        return self._database_connections[database_name]
+
     def reset(self) -> None:
         logger.debug("Arctic.reset()")
         with self._lock:
+            for connection in self._database_connections.values():
+                if connection is not self.__conn:
+                    connection.close()
+            self._database_connections.clear()
             if self.__conn is not None:
                 self.__conn.close()
                 self.__conn = None
@@ -510,21 +530,19 @@ class ArcticLibraryBinding(object):
 
     def __init__(self, arctic: Arctic, library: str) -> None:
         self.arctic = arctic
-        self._curr_conn = self.arctic._conn
         self._lock = threading.RLock()
         database_name, library = self._parse_db_lib(library)
         self.library = library
         self.database_name = database_name
-        self._auth(self.arctic._conn[self.database_name])
+        self._curr_conn = self.arctic._conn_for(self.database_name)
 
     @property
     def _db(self) -> Any:
         with self._lock:
-            arctic_conn = self.arctic._conn
+            arctic_conn = self.arctic._conn_for(self.database_name)
             if arctic_conn is not self._curr_conn:
-                self._auth(arctic_conn[self.database_name])  # trigger re-authentication if Arctic has been reset
                 self._curr_conn = arctic_conn
-        return self.arctic._conn[self.database_name]
+        return arctic_conn[self.database_name]
 
     @property
     def _library_coll(self) -> Any:
@@ -543,19 +561,9 @@ class ArcticLibraryBinding(object):
     def __setstate__(self, state: dict[str, Any]) -> None:
         return ArcticLibraryBinding.__init__(self, state['arctic'], state['library'])
 
-    @mongo_retry
-    def _auth(self, database: Any) -> None:
-        # Get .mongopass details here
-        if not hasattr(self.arctic, 'mongo_host'):
-            return
-
-        auth = get_auth(self.arctic.mongo_host, self.arctic._application_name, database.name)
-        if auth:
-            authenticate(database, auth.user, auth.password)
-
     def reset_auth(self) -> None:
         logger.debug("reset_auth() %s" % self)
-        self._auth(self._db)
+        self.arctic.reset()
 
     def get_name(self) -> str:
         return cast(str, self._db.name + '.' + self._library_coll.name)

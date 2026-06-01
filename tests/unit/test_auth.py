@@ -1,26 +1,27 @@
-import pytest
-from mock import create_autospec, sentinel
-from pymongo.database import Database
-from pymongo.errors import PyMongoError, OperationFailure
+from mock import patch
 
 from arctic import auth
 
 
-def test_authenticate():
-    db = create_autospec(Database)
-    db.authenticate.return_value = sentinel.ret
-    assert auth.authenticate(db, sentinel.user, sentinel.password) == sentinel.ret
+def test_create_client_without_credentials():
+    with patch("arctic.auth.MongoClient", autospec=True) as mongo_client, \
+         patch("arctic.hooks.get_mongodb_uri", return_value="mongodb://host") as get_mongodb_uri:
+        assert auth.create_client("host") is mongo_client.return_value
+
+    get_mongodb_uri.assert_called_once_with("host")
+    mongo_client.assert_called_once_with("mongodb://host")
 
 
-def test_authenticate_fails():
-    db = create_autospec(Database)
-    error = "command SON([('saslStart', 1), ('mechanism', 'SCRAM-SHA-1'), ('payload', Binary('n,,n=foo,r=OTI3MzA3MTEzMTIx', 0)), ('autoAuthorize', 1)]) on namespace admin.$cmd failed: Authentication failed."
-    db.authenticate.side_effect = OperationFailure(error)
-    assert auth.authenticate(db, sentinel.user, sentinel.password) is False
+def test_create_client_with_credentials():
+    credentials = auth.MongoCredentials(database="admin", user="user", password="password")
+    with patch("arctic.auth.MongoClient", autospec=True) as mongo_client, \
+         patch("arctic.hooks.get_mongodb_uri", return_value="mongodb://host"):
+        assert auth.create_client("host", credentials, appname="arctic") is mongo_client.return_value
 
-
-def test_authenticate_fails_exception():
-    db = create_autospec(Database)
-    db.authenticate.side_effect = PyMongoError("error")
-    with pytest.raises(PyMongoError):
-        assert auth.authenticate(db, sentinel.user, sentinel.password) is False
+    mongo_client.assert_called_once_with(
+        "mongodb://host",
+        username="user",
+        password="password",
+        authSource="admin",
+        appname="arctic",
+    )

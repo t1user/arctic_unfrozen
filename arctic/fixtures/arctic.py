@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class MongoServer:
     hostname: str
     port: int
-    api: MongoClient
+    api: MongoClient[dict[str, Any]]
 
 
 SYSTEM_DATABASES = {"admin", "config", "local"}
@@ -39,7 +39,7 @@ def _free_port() -> int:
 
 
 def _connect_mongo(host: Any) -> MongoServer:
-    client = MongoClient(host, serverSelectionTimeoutMS=500)
+    client: MongoClient[dict[str, Any]] = MongoClient(host, serverSelectionTimeoutMS=500)
     client.admin.command("ping")
     address = client.address
     assert address is not None

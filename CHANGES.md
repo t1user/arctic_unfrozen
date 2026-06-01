@@ -3,6 +3,8 @@
 ### Unreleased
  * Project: rename the maintained distribution to Arctic Unfrozen.
  * Docs: explain the relationship to ArcticDB and document isolated local MongoDB integration testing.
+ * Compatibility: require PyMongo 4.17 or newer and test against MongoDB 8.3.2.
+ * Compatibility: replace removed PyMongo count and user-creation APIs.
 
 ### 1.83.1 (2024-04-08) 
  * Release: #1022 fixes for pandas 2 and latest numpy

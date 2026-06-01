@@ -41,6 +41,9 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
   supported Python matrix.
 - Keep the full integration suite blocking in CI now that it is green across
   supported Python versions.
+- Keep the PyMongo 4 and MongoDB 8.3 migration incremental: remove legacy
+  driver calls, preserve existing import paths, and validate stored-data
+  behavior with focused integration tests.
 - Use plain `python -m pytest` as a full local confidence check, not a routine
   edit-cycle command; it runs unit plus integration tests and takes about 8
   minutes on the current Python 3.13 environment.

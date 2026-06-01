@@ -110,7 +110,7 @@ class PickleStore(object):
         data = compress_array([pickled[i * _CHUNK_SIZE: (i + 1) * _CHUNK_SIZE] for i in range(int(len(pickled) / _CHUNK_SIZE + 1))])
 
         for seg, d in enumerate(data):
-            segment = {'data': Binary(d)}
+            segment: dict[str, Any] = {'data': Binary(d)}
             segment['segment'] = seg
             seg += 1
             sha = checksum(symbol, segment)
