@@ -35,25 +35,6 @@ def test_reset_Arctic(mongo_host, library_name):
     assert arctic[library_name]._arctic_lib._curr_conn is arctic._conn
 
 
-def test_re_authenticate_on_arctic_reset(mongo_host, library_name):
-    from collections import namedtuple
-    Cred = namedtuple('Cred', 'user, password')
-    with patch('arctic.arctic.authenticate') as auth_mock, \
-            patch('arctic.arctic.get_auth') as get_auth_mock:
-        auth_mock.return_value = True
-        get_auth_mock.return_value = Cred(user='a_username', password='a_passwd')
-        arctic = Arctic(mongo_host=mongo_host)
-        arctic.initialize_library(library_name, VERSION_STORE)
-        vstore = arctic[library_name]
-        vstore.list_symbols()
-        auth_mock.reset_mock()
-        arctic.reset()
-        assert auth_mock.call_count > 0
-        auth_mock.reset_mock()
-        vstore.list_symbols()
-        assert auth_mock.call_count == 0
-
-
 def test_simple(library):
     sym = 'symbol'
     data = get_large_ts(100)

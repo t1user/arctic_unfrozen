@@ -590,7 +590,7 @@ class VersionStore(object):
             Write 'data' if no previous version exists.
         """
         self._arctic_lib.check_quota()
-        version = {'_id': bson.ObjectId()}
+        version: VersionDoc = {'_id': bson.ObjectId()}
         version['arctic_version'] = ARCTIC_VERSION_NUMERICAL
         version['symbol'] = symbol
         spec = {'symbol': symbol}
@@ -692,7 +692,7 @@ class VersionStore(object):
         of the written symbol in the store.
         """
         self._arctic_lib.check_quota()
-        version = {'_id': bson.ObjectId()}
+        version: VersionDoc = {'_id': bson.ObjectId()}
         version['arctic_version'] = ARCTIC_VERSION_NUMERICAL
         version['symbol'] = symbol
         version['version'] = self._version_nums.find_one_and_update({'symbol': symbol},

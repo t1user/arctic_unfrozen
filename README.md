@@ -1,13 +1,23 @@
 # Arctic Unfrozen
 
-Arctic Unfrozen maintains the MongoDB-backed `arctic` Python package originally
-developed by Man Group. The original authors moved active development to
+Arctic is a MongoDB-backed time-series and dataframe database originally
+developed by Man Group. It provides namespaced libraries for storing and
+retrieving pandas objects, NumPy arrays, and other Python data. Its pluggable
+store types support different workloads: `VersionStore` keeps object history
+and point-in-time snapshots, `TickStore` handles continuously arriving tick
+data, and `ChunkStore` provides efficient range access to chunked datasets.
+Applications can also register custom library types when the built-in stores
+are not the right fit.
+
+Arctic Unfrozen maintains the established `arctic` Python package. The original
+authors moved active development to
 [ArcticDB](https://github.com/man-group/ArcticDB), a ground-up successor with a
 new storage engine. ArcticDB is the appropriate choice for many new projects,
 but it is not storage-compatible with Arctic.
 
 This project keeps Arctic useful for existing deployments and for teams that
-prefer MongoDB. It remains a practical option when:
+prefer MongoDB. Compared with adopting a different time-series storage system,
+it remains a practical option when:
 
 - existing Arctic data must remain readable without a migration;
 - MongoDB is already part of the application stack and operating model;
@@ -44,6 +54,7 @@ against an isolated ephemeral MongoDB container:
 
 ```bash
 docker run --rm -d --name arctic-unfrozen-test \
+  --ulimit nofile=64000:64000 \
   -p 127.0.0.1:27018:27017 \
   mongodb/mongodb-community-server:8.3.2-ubi9-slim
 ARCTIC_TEST_MONGO_HOST=localhost:27018 python -m nox -s integration

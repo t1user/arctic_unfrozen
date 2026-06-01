@@ -1,9 +1,8 @@
 import argparse
 import logging
 
-from .utils import do_db_auth, setup_logging
-from ..arctic import Arctic, ArcticLibraryBinding
-from ..hooks import get_mongodb_uri
+from .utils import setup_logging
+from ..arctic import Arctic
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +29,9 @@ def main() -> None:
         logger.info("DRY-RUN: No changes will be made.")
 
     logger.info("FSCK'ing: %s on mongo %s" % (opts.library, opts.host))
-    store = Arctic(get_mongodb_uri(opts.host))
+    store = Arctic(opts.host)
 
     for lib in opts.library:
-        # Auth to the DB for making changes
-        if opts.f:
-            database_name, _ = ArcticLibraryBinding._parse_db_lib(lib)
-            do_db_auth(opts.host, store._conn, database_name)
-
         orig_stats = store[lib].stats()
 
         logger.info('----------------------------')

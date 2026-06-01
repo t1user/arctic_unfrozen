@@ -16,7 +16,7 @@ def test_arctic_lazy_init():
     with patch('pymongo.MongoClient', return_value=MagicMock(), autospec=True) as mc, \
         patch('arctic.arctic.mongo_retry', side_effect=lambda x: x, autospec=True), \
         patch('arctic._cache.Cache._is_not_expired', return_value=True), \
-        patch('arctic.arctic.get_auth', autospec=True) as ga:
+        patch('arctic.arctic.get_auth', autospec=True, return_value=None):
             store = Arctic('cluster')
             assert not mc.called
             # do something to trigger lazy arctic init
@@ -28,7 +28,7 @@ def test_arctic_lazy_init_ssl_true():
     with patch('pymongo.MongoClient', return_value=MagicMock(), autospec=True) as mc, \
             patch('arctic.arctic.mongo_retry', side_effect=lambda x: x, autospec=True), \
             patch('arctic._cache.Cache._is_not_expired', return_value=True), \
-            patch('arctic.arctic.get_auth', autospec=True) as ga:
+            patch('arctic.arctic.get_auth', autospec=True, return_value=None):
         store = Arctic('cluster', ssl=True)
         assert not mc.called
         # do something to trigger lazy arctic init
@@ -46,7 +46,7 @@ def test_connection_passed_warning_raised():
     with patch('pymongo.MongoClient', return_value=MagicMock(), autospec=True), \
          patch('arctic.arctic.mongo_retry', side_effect=lambda x: x, autospec=True), \
          patch('arctic._cache.Cache._is_not_expired', return_value=True), \
-         patch('arctic.arctic.get_auth', autospec=True), \
+         patch('arctic.arctic.get_auth', autospec=True, return_value=None), \
          patch('arctic.arctic.logger') as lg:
         magic_mock = MagicMock(nodes={("host", "port")})
         store = Arctic(magic_mock, ssl=True)
@@ -58,7 +58,7 @@ def test_connection_passed_warning_raised():
 
 
 def test_arctic_auth():
-    with patch('pymongo.MongoClient', return_value=MagicMock(), autospec=True), \
+    with patch('pymongo.MongoClient', return_value=MagicMock(), autospec=True) as mc, \
         patch('arctic.arctic.mongo_retry', autospec=True), \
          patch('arctic._cache.Cache._is_not_expired', return_value=True), \
          patch('arctic.arctic.get_auth', autospec=True) as ga:
@@ -67,8 +67,11 @@ def test_arctic_auth():
             # do something to trigger lazy arctic init
             store.list_libraries()
             ga.assert_called_once_with('cluster', 'arctic', 'admin')
-            store._adminDB.authenticate.assert_called_once_with('admin_user', 'admin_pass')
+            assert mc.call_args.kwargs["username"] == "admin_user"
+            assert mc.call_args.kwargs["password"] == "admin_pass"
+            assert mc.call_args.kwargs["authSource"] == "db"
             ga.reset_mock()
+            mc.reset_mock()
 
             # Get a 'missing' library
             with pytest.raises(LibraryNotFoundException):
@@ -79,7 +82,9 @@ def test_arctic_auth():
 
             # Creating the library will have attempted to auth against it
             ga.assert_called_once_with('cluster', 'arctic', 'arctic_jblackburn')
-            store._conn['arctic_jblackburn'].authenticate.assert_called_once_with('user', 'pass')
+            assert mc.call_args.kwargs["username"] == "user"
+            assert mc.call_args.kwargs["password"] == "pass"
+            assert mc.call_args.kwargs["authSource"] == "db"
 
 
 def test_arctic_auth_custom_app_name():
@@ -124,7 +129,7 @@ def test_arctic_connect_hostname():
 def test_arctic_connect_with_environment_name():
     with patch('pymongo.MongoClient', return_value=MagicMock(), autospec=True) as mc, \
          patch('arctic.arctic.mongo_retry', autospec=True) as ar, \
-         patch('arctic.arctic.get_auth', autospec=True), \
+         patch('arctic.arctic.get_auth', autospec=True, return_value=None), \
          patch('arctic._cache.Cache._is_not_expired', return_value=True), \
          patch('arctic.arctic.get_mongodb_uri') as gmfe:
             store = Arctic('live', socketTimeoutMS=sentinel.socket_timeout,
@@ -146,11 +151,10 @@ def test_arctic_connect_with_environment_name():
     ])
 def test_database_library_specifier(library, expected_library, expected_database):
     mongo = MagicMock()
-    with patch('arctic.arctic.ArcticLibraryBinding._auth'):
-        ml = ArcticLibraryBinding(mongo, library)
+    ml = ArcticLibraryBinding(mongo, library)
 
     assert ml.library == expected_library
-    mongo._conn.__getitem__.assert_called_with(expected_database)
+    mongo._conn_for.assert_called_with(expected_database)
 
 
 def test_arctic_repr():
@@ -164,9 +168,8 @@ def test_arctic_repr():
 
 def test_lib_repr():
     mongo = MagicMock()
-    with patch('arctic.arctic.ArcticLibraryBinding._auth'):
-        ml = ArcticLibraryBinding(mongo, 'asdf')
-        assert str(ml) == repr(ml)
+    ml = ArcticLibraryBinding(mongo, 'asdf')
+    assert str(ml) == repr(ml)
 
 
 def test_register_library_type():
@@ -434,23 +437,15 @@ def test_arctic_set_get_state():
 
 
 def test__conn_auth_issue():
-    auth_timeout = [0]
-
     a = Arctic("host:12345")
-    sentinel.creds = Mock()
+    connection = MagicMock()
 
-    def flaky_auth(*args, **kwargs):
-        if not auth_timeout[0]:
-            auth_timeout[0] = 1
-            raise AutoReconnect()
-
-    with patch('arctic.arctic.authenticate', flaky_auth), \
-    patch('arctic.arctic.get_auth', return_value=sentinel.creds), \
+    with patch.object(a, '_create_connection', side_effect=[AutoReconnect(), connection]), \
+    patch('arctic.arctic.get_auth', return_value=None), \
     patch('arctic._cache.Cache.__init__', autospec=True, return_value=None), \
     patch('arctic.decorators._handle_error') as he:
         a._conn
         assert he.call_count == 1
-        assert auth_timeout[0]
 
 
 def test_reset():
@@ -468,18 +463,19 @@ def test_reset():
 
 def test_ArcticLibraryBinding_db():
     arctic = create_autospec(Arctic)
-    arctic._conn = create_autospec(MongoClient)
+    first_connection = create_autospec(MongoClient)
+    second_connection = create_autospec(MongoClient)
+    arctic._conn_for.side_effect = [first_connection, first_connection, second_connection, second_connection]
     alb = ArcticLibraryBinding(arctic, "sentinel.library")
-    with patch.object(alb, '_auth') as _auth:
-        # connection is cached during __init__
-        alb._db
-        assert _auth.call_count == 0
 
-        # Change the arctic connection
-        arctic._conn = create_autospec(MongoClient)
-        alb._db
-        assert _auth.call_count == 1
+    # Connection is cached during __init__.
+    alb._db
+    assert alb._curr_conn is first_connection
 
-        # connection is still cached
-        alb._db
-        assert _auth.call_count == 1
+    # A reset can produce a new connection.
+    alb._db
+    assert alb._curr_conn is second_connection
+
+    # The latest connection remains cached.
+    alb._db
+    assert alb._curr_conn is second_connection

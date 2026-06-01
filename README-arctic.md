@@ -108,12 +108,12 @@ Arctic storage implementations are **pluggable**.  VersionStore is the default.
 
 ## Requirements
 
-Arctic currently works with:
+Arctic Unfrozen currently supports:
 
- * python 3.6, 3.7, 3.8
- * pymongo >= 3.6.0 <= 3.11.0
- * pandas >= 0.22.0 < 2
- * MongoDB >= 2.4.x <= 4.4.18
+ * Python 3.10 through 3.13
+ * PyMongo >= 4.17 < 5
+ * current pandas and numpy releases
+ * MongoDB 8.3.2, exercised by the integration-test suite
 
 
 Operating Systems:

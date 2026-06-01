@@ -1,43 +1,26 @@
 import logging
 from typing import Any
 
-from ..auth import get_auth, authenticate
+from ..auth import create_client, get_auth
 
 logger = logging.getLogger(__name__)
 
 
-def do_db_auth(host: str, connection: Any, db_name: str | None) -> bool:
+def get_db_connection(host: str, db_name: str | None) -> Any:
     """
-    Attempts to authenticate against the mongo instance.
+    Create a Mongo client using admin credentials when available, otherwise
+    credentials for the requested database.
 
     Tries:
       - Auth'ing against admin as 'admin' ; credentials: <host>/arctic/admin/admin
       - Auth'ing against db_name (which may be None if auth'ing against admin above)
 
-    returns True if authentication succeeded.
+    The connection attempt remains lazy until the first database operation.
     """
     admin_creds = get_auth(host, 'admin', 'admin')
     user_creds = get_auth(host, 'arctic', db_name)
 
-    # Attempt to authenticate the connection
-    # Try at 'admin level' first as this allows us to enableSharding, which we want
-    if admin_creds is None:
-        # Get ordinary credentials for authenticating against the DB
-        if user_creds is None:
-            logger.error("You need credentials for db '%s' on '%s', or admin credentials" % (db_name, host))
-            return False
-        if not authenticate(connection[db_name], user_creds.user, user_creds.password):
-            logger.error("Failed to authenticate to db '%s' on '%s', using user credentials" % (db_name, host))
-            return False
-        return True
-    elif not authenticate(connection.admin, admin_creds.user, admin_creds.password):
-        logger.error("Failed to authenticate to '%s' as Admin. Giving up." % (host))
-        return False
-    # Ensure we attempt to auth against the user DB when credentials exist;
-    # non-privileged admin users may not have access to the target DB.
-    if user_creds is not None:
-        authenticate(connection[db_name], user_creds.user, user_creds.password)
-    return True
+    return create_client(host, admin_creds or user_creds)
 
 
 def setup_logging() -> None:

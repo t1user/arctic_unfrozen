@@ -43,7 +43,7 @@ def _attempt_update_unchanged(
     symbol: str, unchanged_segment_ids: list[dict[str, Any]], collection: Any, version: dict[str, Any],
     previous_version: dict[str, Any]
 ) -> None:
-    if not unchanged_segment_ids or not collection or not version:
+    if not unchanged_segment_ids or collection is None or not version:
         return
 
     # Currently it is called only from _concat_and_rewrite, with "base_version_id" always empty
@@ -721,7 +721,7 @@ class NdarrayStore(object):
         # Write
         bulk: list[Any] = []
         for i, chunk in zip(idxs, compressed_chunks):
-            segment = {
+            segment: dict[str, Any] = {
                 'data': Binary(chunk),
                 'compressed': True,
                 'segment': min((i + 1) * rows_per_chunk - 1, length - 1) + segment_offset,

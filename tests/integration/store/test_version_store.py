@@ -13,7 +13,6 @@ from mock import Mock, patch
 from pandas.testing import assert_frame_equal, assert_series_equal
 from pymongo import ReadPreference
 from pymongo.errors import OperationFailure
-from pymongo.server_type import SERVER_TYPE
 
 import arctic
 from arctic import VERSION_STORE, PandasDataFrameStore, PandasSeriesStore
@@ -79,47 +78,16 @@ class FwPointersCtx:
         arctic.store._ndarray_store.ARCTIC_FORWARD_POINTERS_RECONCILE = self.reconcile_orig_value
 
 
-from pymongo.cursor import _QUERY_OPTIONS
-from pymongo.message import query as __query
-def _query(allow_secondary, library_name):
-    def _internal_query(options, *args, **kwargs):
-        coll_name = args[0]
-        data_coll_name = 'arctic_{}'.format(library_name)
-        versions_coll_name = data_coll_name + '.versions'
-        if allow_secondary and coll_name in (data_coll_name, versions_coll_name):
-            # Reads to the Version and Chunks collections are allowed to slaves
-            assert bool(options & _QUERY_OPTIONS['slave_okay']) == allow_secondary, "{}: options:{}".format(coll_name, options)
-        elif '.$cmd' not in coll_name:
-            # All other collections we force PRIMARY read.
-            assert bool(options & _QUERY_OPTIONS['slave_okay']) == False, "{}: options:{}".format(coll_name, options)
-        return __query(options, *args, **kwargs)
-    return _internal_query
+def test_store_item_new_version(library):
+    library.write(symbol, ts1)
+    coll = library._collection
+    count = mongo_count(coll)
+    assert mongo_count(coll.versions) == 1
 
-
-# MongoDB always sets slaveOk when talking to a single server.
-# Pretend we're a mongos for the tests that care...
-#
-# A _Query's slaveOk bit is already set for queries with non-primary
-# read preference. If this is a direct connection to a mongod, override
-# and *always* set the slaveOk bit. See bullet point 2 in
-# server-selection.rst#topology-type-single.
-# set_slave_ok = (
-#     topology.description.topology_type == TOPOLOGY_TYPE.Single
-#    and server.description.server_type != SERVER_TYPE.Mongos)
-
-
-def test_store_item_new_version(library, library_name):
-    with patch('pymongo.message.query', side_effect=_query(False, library_name)), \
-         patch('pymongo.server_description.ServerDescription.server_type', SERVER_TYPE.Mongos):
-        library.write(symbol, ts1)
-        coll = library._collection
-        count = mongo_count(coll)
-        assert mongo_count(coll.versions) == 1
-
-        # No change to the TS
-        library.write(symbol, ts1, prune_previous_version=False)
-        assert mongo_count(coll) == count
-        assert mongo_count(coll.versions) == 2
+    # No change to the TS
+    library.write(symbol, ts1, prune_previous_version=False)
+    assert mongo_count(coll) == count
+    assert mongo_count(coll.versions) == 2
 
 
 def test_store_item_read_preference(library_secondary):
@@ -139,7 +107,7 @@ def test_store_item_read_preference(library_secondary):
     assert ReadPreference.PRIMARY in read_preferences
 
 
-def test_read_item_read_preference_SECONDARY(library_secondary, library_name):
+def test_read_item_read_preference_SECONDARY(library_secondary):
     # write an item
     library_secondary.write(symbol, ts1)
     with patch.object(
@@ -148,28 +116,6 @@ def test_read_item_read_preference_SECONDARY(library_secondary, library_name):
         library_secondary.read(symbol)
 
     versions_with_options.assert_any_call(read_preference=ReadPreference.NEAREST)
-
-
-@pytest.mark.parametrize('fw_pointers_cfg', [FwPointersCfg.DISABLED, FwPointersCfg.HYBRID, FwPointersCfg.ENABLED])
-def _test_query_falls_back_to_primary(library_secondary, library_name, fw_pointers_cfg):
-    with FwPointersCtx(fw_pointers_cfg):
-        allow_secondary = [True]
-        def _query(options, *args, **kwargs):
-            # If we're allowing secondary read and an error occurs when reading a chunk.
-            # We should attempt a call to primary only subsequently.
-            # In newer MongoDBs we query <database>.$cmd rather than <database>.<collection>
-            if args[0].startswith('arctic_{}.'.format(library_name.split('.')[0])) and \
-                        bool(options & _QUERY_OPTIONS['slave_okay']) == True:
-                allow_secondary[0] = False
-                raise OperationFailure("some_error")
-            return __query(options, *args, **kwargs)
-
-        library_secondary.write(symbol, ts1)
-        with patch('pymongo.message.query', side_effect=_query), \
-             patch('pymongo.server_description.ServerDescription.server_type', SERVER_TYPE.Mongos):
-            assert library_secondary.read(symbol) is not None
-        # We raised at least once on a secondary read
-        assert allow_secondary[0] == False
 
 
 @pytest.mark.parametrize('fw_pointers_cfg', [FwPointersCfg.DISABLED, FwPointersCfg.HYBRID, FwPointersCfg.ENABLED])

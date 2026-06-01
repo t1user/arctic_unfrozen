@@ -37,7 +37,7 @@ class LazyIncrementalSerializer(object, metaclass=abc.ABCMeta):
         self.chunk_size = chunk_size
         self._serializer = serializer
         self._initialized = False
-        self._checksum = None
+        self._checksum: Binary | None = None
 
     @abc.abstractmethod
     def __len__(self) -> int:
@@ -184,7 +184,7 @@ class IncrementalPandasToRecArraySerializer(LazyIncrementalSerializer):
     def checksum(self, from_idx: int | None, to_idx: int | None) -> Binary:
         if self._checksum is None:
             self._lazy_init()
-            total_sha = None
+            total_sha: Any = None
             for chunk_bytes, _, _, _ in self.generator_bytes(from_idx=from_idx, to_idx=to_idx):
                 # TODO: what about compress_array here in batches?
                 compressed_chunk = compress(chunk_bytes)

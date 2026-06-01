@@ -2,12 +2,10 @@ import argparse
 import base64
 import logging
 import uuid
-
-from pymongo import MongoClient
+from typing import Any
 
 from arctic.arctic import Arctic
-from .utils import do_db_auth
-from ..hooks import get_mongodb_uri
+from ..auth import create_client, get_auth
 
 logger = logging.getLogger(__name__)
 
@@ -28,17 +26,14 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    c = MongoClient(get_mongodb_uri(args.host))
-
-    if not do_db_auth(args.host, c, args.db if args.db else 'admin'):
-        logger.error("Failed to authenticate to '%s'. Check your admin password!" % (args.host))
-        return
+    credentials = get_auth(args.host, "admin", "admin")
+    c: Any = create_client(args.host, credentials)
 
     for user in args.users:
         write_access = args.write
         p = args.password
         if p is None:
-            p = base64.b64encode(uuid.uuid4().bytes).replace(b'/', b'')[:12]
+            p = base64.b64encode(uuid.uuid4().bytes).replace(b'/', b'')[:12].decode("ascii")
         db = args.db
         if not db:
             # Users always have write access to their database
@@ -46,7 +41,8 @@ def main() -> None:
             db = Arctic.DB_PREFIX + '_' + user
 
         # Add the user to the database
-        c[db].add_user(user, p, read_only=not write_access)
+        role = "readWrite" if write_access else "read"
+        c[db].command("createUser", user, pwd=p, roles=[{"role": role, "db": db}])
 
         logger.info("Granted: {user} [{permission}] to {db}".format(user=user,
                                                                     permission='WRITE' if write_access else 'READ',

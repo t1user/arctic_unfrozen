@@ -96,7 +96,7 @@ class FrameConverter(object):
         else:
             raise ValueError('Cannot store arrays with {} dtype'.format(type_))
 
-    def docify(self, df: pd.DataFrame) -> SON:
+    def docify(self, df: pd.DataFrame) -> SON[str, Any]:
         """
         Convert a Pandas DataFrame to SON.
 
@@ -109,7 +109,7 @@ class FrameConverter(object):
         masks = {}
         lengths = {}
         columns = []
-        data = Binary(b'')
+        data = b''
         start = 0
 
         arrays: list[bytes] = []
@@ -134,7 +134,7 @@ class FrameConverter(object):
             start += len(d)
             data += d
 
-        doc = SON({DATA: data, METADATA: {}})
+        doc: SON[str, Any] = SON({DATA: Binary(data), METADATA: {}})
         doc[METADATA] = {COLUMNS: columns,
                          MASK: masks,
                          LENGTHS: lengths,
@@ -178,7 +178,7 @@ class FrametoArraySerializer(Serializer):
     def __init__(self) -> None:
         self.converter = FrameConverter()
 
-    def serialize(self, data: Any, **kwargs: Any) -> SON:
+    def serialize(self, data: Any, **kwargs: Any) -> SON[str, Any]:
         df = data
         if isinstance(df, pd.Series):
             dtype = 'series'

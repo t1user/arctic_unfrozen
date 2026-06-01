@@ -1,13 +1,10 @@
 import optparse
-
-import pymongo
+from typing import Any
 
 from .utils import setup_logging
 from .._util import enable_sharding
 from ..arctic import Arctic
-from ..auth import authenticate
-from ..auth import get_auth
-from ..hooks import get_mongodb_uri
+from ..auth import create_client, get_auth
 
 
 def main() -> None:
@@ -28,10 +25,8 @@ def main() -> None:
 
     print("Enabling-sharding: %s on mongo %s" % (opts.library, opts.host))
 
-    c = pymongo.MongoClient(get_mongodb_uri(opts.host))
     credentials = get_auth(opts.host, 'admin', 'admin')
-    if credentials:
-        authenticate(c.admin, credentials.user, credentials.password)
+    c: Any = create_client(opts.host, credentials)
     store = Arctic(c)
     enable_sharding(store, opts.library)
 

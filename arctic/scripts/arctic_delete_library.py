@@ -1,11 +1,9 @@
 import logging
 import optparse
+from typing import Any
 
-import pymongo
-
-from .utils import do_db_auth, setup_logging
+from .utils import get_db_connection, setup_logging
 from ..arctic import Arctic
-from ..hooks import get_mongodb_uri
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +28,8 @@ def main() -> None:
         parser.error('Must specify the full path of the library e.g. arctic_jblackburn.lib!')
 
     print("Deleting: %s on mongo %s" % (opts.library, opts.host))
-    c = pymongo.MongoClient(get_mongodb_uri(opts.host))
-
     db_name = opts.library[:opts.library.index('.')] if '.' in opts.library else None
-    do_db_auth(opts.host, c, db_name)
+    c: Any = get_db_connection(opts.host, db_name)
     store = Arctic(c)
     store.delete_library(opts.library)
 
