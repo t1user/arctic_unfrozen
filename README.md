@@ -44,6 +44,7 @@ against an isolated ephemeral MongoDB container:
 
 ```bash
 docker run --rm -d --name arctic-unfrozen-test \
+  --ulimit nofile=64000:64000 \
   -p 127.0.0.1:27018:27017 \
   mongodb/mongodb-community-server:8.3.2-ubi9-slim
 ARCTIC_TEST_MONGO_HOST=localhost:27018 python -m nox -s integration
