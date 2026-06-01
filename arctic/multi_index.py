@@ -4,7 +4,7 @@ Utility functions for multi-index dataframes. Useful for creating bi-temporal ti
 import logging
 from datetime import datetime
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def _lexsort_depth(index: Any) -> int:
     """Return MultiIndex lexsort depth across pandas versions."""
-    return getattr(index, "lexsort_depth", index._lexsort_depth)
+    return cast(int, getattr(index, "lexsort_depth", index._lexsort_depth))
 
 
 def fancy_group_by(

@@ -22,7 +22,7 @@ This repository contains the legacy `arctic` Python package, now in maintenance 
 - `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 through 3.13.
 - `python -m pytest`: run the full local suite, including MongoDB-backed integration tests. This took about 8 minutes on Python 3.13 in May 2026 and requires a reachable MongoDB test instance or local `mongod`.
 - `python -m nox -s unit`: run the unit-test CI session on the active Python.
-- `python -m nox -s mypy`: run the type-checking CI session for the `arctic` package.
+- `python -m nox -s mypy`: run the type-checking CI session for the `arctic` package. It rejects untyped function definitions and implicit `Any` returns.
 - `python -m nox -s integration`: run the MongoDB-backed integration-test CI session on the active Python. Without `ARCTIC_TEST_MONGO_HOST`, this starts a local `mongod` if available.
 - `python -m nox -s unit_matrix integration_matrix`: run the full local Python matrix only before high-risk pushes or when explicitly requested. It is too slow for routine edit cycles.
 - `python -m pytest tests/unit/test_auth.py`: run a focused test file or directory.

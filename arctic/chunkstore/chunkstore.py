@@ -3,7 +3,7 @@ import logging
 from collections import defaultdict
 from collections.abc import Callable, Iterator
 from itertools import groupby
-from typing import Any
+from typing import Any, cast
 
 import pymongo
 from bson.binary import Binary
@@ -183,7 +183,7 @@ class ChunkStore(object):
         """
         symbols = self._symbols.distinct(SYMBOL)
         if partial_match is None:
-            return symbols
+            return cast(list[str], symbols)
         return [x for x in symbols if partial_match in x]
 
     def _get_symbol_info(self, symbol: str | list[str]) -> Any:

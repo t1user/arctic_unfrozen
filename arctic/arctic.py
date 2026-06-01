@@ -3,7 +3,7 @@ import os
 import re
 import threading
 import warnings
-from typing import Any
+from typing import Any, cast
 
 # just suppress for pymongo
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -205,7 +205,7 @@ class Arctic(object):
         Allows people to enable or disable caching for list_libraries globally.
         """
         _ = self._conn  # Ensures the connection exists and cache is initialized with it.
-        return self._cache.is_caching_enabled(ENABLE_CACHE)
+        return cast(bool, self._cache.is_caching_enabled(ENABLE_CACHE))
 
     def list_libraries(self, newer_than_secs: Any = None) -> list[str]:
         """
@@ -248,7 +248,7 @@ class Arctic(object):
             self._cache.set('list_libraries', libs)
             return libs
 
-        return cache_data
+        return cast(list[str], cache_data)
 
     def reload_cache(self) -> None:
         _ = self._conn  # Ensures the connection exists and cache is initialized with it.
@@ -558,7 +558,7 @@ class ArcticLibraryBinding(object):
         self._auth(self._db)
 
     def get_name(self) -> str:
-        return self._db.name + '.' + self._library_coll.name
+        return cast(str, self._db.name + '.' + self._library_coll.name)
 
     def get_top_level_collection(self) -> Any:
         """

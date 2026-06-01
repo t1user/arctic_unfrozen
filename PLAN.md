@@ -47,7 +47,8 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
 
 - Add type annotations opportunistically in touched files.
 - Start with leaf modules and utility code before central storage APIs.
-- Keep `python -m nox -s mypy` passing for the `arctic` package before broadening type strictness.
+- Keep `python -m nox -s mypy` passing for the `arctic` package. It now rejects
+  untyped function definitions and implicit `Any` return values.
 - Tighten typing by package slice rather than by adding broad `Any` annotations
   solely to satisfy `--disallow-untyped-defs`.
 - Avoid type-only refactors that obscure behavior changes.

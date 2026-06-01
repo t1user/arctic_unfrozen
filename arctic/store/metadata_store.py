@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime as dt, timezone
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, cast
 
 import bson
 import pandas as pd
@@ -85,7 +85,7 @@ class MetadataStore(BSONStore):
 
         # Skip aggregation pipeline
         if not (regex or as_of or kwargs):
-            return self.distinct('symbol')
+            return cast(list[str], self.distinct('symbol'))
 
         # Index-based query part
         index_query: dict[str, Any] = {}
@@ -226,7 +226,7 @@ class MetadataStore(BSONStore):
                 raise ValueError('start_time={} is earlier than the last metadata @{}'.format(start_time,
                                                                                               old_metadata['start_time']))
             if old_metadata['metadata'] == metadata:
-                return old_metadata
+                return cast(dict[str, Any], old_metadata)
         elif metadata is None:
             return None
 
@@ -265,7 +265,7 @@ class MetadataStore(BSONStore):
                 self.find_one_and_update({'symbol': symbol}, {'$set': {'start_time': start_time}},
                                          sort=[('start_time', pymongo.ASCENDING)])
                 old_metadata['start_time'] = start_time
-                return old_metadata
+                return cast(dict[str, Any], old_metadata)
             end_time = old_metadata.get('start_time')
         else:
             end_time = None
@@ -299,7 +299,7 @@ class MetadataStore(BSONStore):
         mongo_retry(self.find_one_and_update)({'symbol': symbol}, {'$unset': {'end_time': ''}},
                                               sort=[('start_time', pymongo.DESCENDING)])
 
-        return last_metadata
+        return cast(dict[str, Any], last_metadata)
 
     @mongo_retry
     def purge(self, symbol: str) -> None:

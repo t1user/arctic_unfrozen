@@ -1,7 +1,7 @@
 import hashlib
 import logging
 from operator import itemgetter
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pymongo
@@ -316,7 +316,7 @@ class NdarrayStore(object):
         return self.can_read(version, symbol)
 
     def can_read(self, version: dict[str, Any], symbol: str) -> bool:
-        return version['type'] == self.TYPE
+        return cast(bool, version['type'] == self.TYPE)
 
     @staticmethod
     def can_write_type(data: Any) -> bool:
@@ -329,7 +329,7 @@ class NdarrayStore(object):
         if metadata is None:
             metadata = {}
         if string.startswith('['):
-            return np.dtype(eval(string), metadata=metadata)
+            return cast(np.dtype, np.dtype(eval(string), metadata=metadata))
         return np.dtype(string, metadata=metadata)
 
     def _index_range(self, version: Any, symbol: Any, from_version: Any = None, **kwargs: Any) -> Any:
@@ -393,7 +393,7 @@ class NdarrayStore(object):
 
     def _promote_types(self, dtype: Any, dtype_str: str) -> np.dtype:
         if dtype_str == str(dtype):
-            return dtype
+            return cast(np.dtype, dtype)
         prev_dtype = self._dtype(dtype_str)
         if dtype.names is None:
             rtn = np.promote_types(dtype, prev_dtype)

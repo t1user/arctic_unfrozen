@@ -57,10 +57,10 @@ class AsyncArctic(LazySingletonTasksCoordinator):
         return "ASYNC_ARCTIC"
 
     def _get_modifiers(self, library_name: str | None, symbol: str | None = None) -> list[AsyncRequest]:
-        return self.requests_per_library[library_name][symbol][AsyncRequestType.MODIFIER]
+        return cast(list[AsyncRequest], self.requests_per_library[library_name][symbol][AsyncRequestType.MODIFIER])
 
     def _get_accessors(self, library_name: str | None, symbol: str | None = None) -> list[AsyncRequest]:
-        return self.requests_per_library[library_name][symbol][AsyncRequestType.ACCESSOR]
+        return cast(list[AsyncRequest], self.requests_per_library[library_name][symbol][AsyncRequestType.ACCESSOR])
 
     @staticmethod
     def _verify_request(

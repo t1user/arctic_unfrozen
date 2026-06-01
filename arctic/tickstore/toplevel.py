@@ -3,7 +3,7 @@ import itertools
 import logging
 import re
 from datetime import datetime as dt, date, time, timedelta
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, cast
 
 import pandas as pd
 import pymongo
@@ -170,7 +170,7 @@ overlapping libraries: {}""".format(library_name, [lib.library for lib in librar
         name = self._arctic_lib.get_name()
         if name.startswith(self._arctic_lib.DB_PREFIX + '_'):
             name = name[len(self._arctic_lib.DB_PREFIX) + 1:]
-        return name
+        return cast(str, name)
 
     def _get_libraries(self, date_range: Any) -> list[TickStoreLibrary]:
         libraries = self._get_library_metadata(date_range)

@@ -110,7 +110,7 @@ def consistent_get_timezone_str(tz: Union[datetime.tzinfo, str]) -> str:
 
     # Special case for `dateutil.tz.gettz("UTC")` to ensure we always return a 'dateutil/...' string:
     if is_utc(tz) and treat_tz_as_dateutil(tz):
-        return "dateutil/" + getattr(tz, "_filename")
+        return "dateutil/" + cast(str, getattr(tz, "_filename"))
 
     return str(get_timezone(tz))
 

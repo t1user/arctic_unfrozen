@@ -110,14 +110,19 @@ python_version = "3.10"
 packages = ["arctic"]
 ignore_missing_imports = true
 warn_unused_ignores = true
+warn_return_any = true
 
 [[tool.mypy.overrides]]
 module = [
+    "arctic",
     "arctic.arctic",
+    "arctic._config",
     "arctic.chunkstore._chunker",
+    "arctic.chunkstore",
     "arctic.chunkstore.chunkstore",
     "arctic.chunkstore.date_chunker",
     "arctic.chunkstore.passthrough_chunker",
+    "arctic.chunkstore.tools",
     "arctic.chunkstore.tools.tools",
     "arctic.chunkstore.utils",
     "arctic._cache",
@@ -127,11 +132,16 @@ module = [
     "arctic.asynchronous.async_arctic",
     "arctic.auth",
     "arctic.asynchronous.async_utils",
+    "arctic.asynchronous",
+    "arctic.date",
     "arctic.date._daterange",
     "arctic.date._generalslice",
+    "arctic.date._mktz",
     "arctic.date._parse",
     "arctic.date._util",
     "arctic.decorators",
+    "arctic.exceptions",
+    "arctic.fixtures",
     "arctic.fixtures.arctic",
     "arctic.hooks",
     "arctic.hosts",
@@ -145,10 +155,13 @@ module = [
     "arctic.scripts.arctic_list_libraries",
     "arctic.scripts.arctic_prune_versions",
     "arctic.scripts.utils",
+    "arctic.scripts",
+    "arctic.serialization",
     "arctic.serialization.incremental",
     "arctic.serialization.numpy_arrays",
     "arctic.serialization.numpy_records",
     "arctic.serialization._serializer",
+    "arctic.store",
     "arctic.store.audit",
     "arctic.store.bitemporal_store",
     "arctic.store.bson_store",
@@ -159,6 +172,7 @@ module = [
     "arctic.store._version_store_utils",
     "arctic.store.version_store",
     "arctic.store.versioned_item",
+    "arctic.tickstore",
     "arctic.tickstore.tickstore",
     "arctic.tickstore.toplevel",
 ]

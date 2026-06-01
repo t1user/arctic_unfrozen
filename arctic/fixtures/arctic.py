@@ -7,7 +7,7 @@ import socket
 import subprocess
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import bson
 import pytest as pytest
@@ -35,7 +35,7 @@ SYSTEM_DATABASES = {"admin", "config", "local"}
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+        return cast(int, sock.getsockname()[1])
 
 
 def _connect_mongo(host: Any) -> MongoServer:
