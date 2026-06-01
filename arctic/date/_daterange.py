@@ -1,8 +1,12 @@
 import datetime
+from typing import Any, TypeAlias, TypeGuard, cast
 
 
-from ._generalslice import OPEN_OPEN, CLOSED_CLOSED, OPEN_CLOSED, CLOSED_OPEN, GeneralSlice
+from ._generalslice import OPEN_OPEN, CLOSED_CLOSED, OPEN_CLOSED, CLOSED_OPEN, GeneralSlice, Intervals
 from ._parse import parse
+
+DateBound: TypeAlias = datetime.datetime | datetime.date
+DateRangeInput: TypeAlias = int | str | bytes | DateBound | None
 
 INTERVAL_LOOKUP = {(True, True): OPEN_OPEN,
                    (False, False): CLOSED_CLOSED,
@@ -47,12 +51,12 @@ class DateRange(GeneralSlice):
                CLOSED_CLOSED, OPEN_CLOSED, CLOSED_OPEN or OPEN_OPEN.
                **Default is CLOSED_CLOSED**.
     """
-    def __init__(self, start=None, end=None, interval=CLOSED_CLOSED):
+    def __init__(self, start: DateRangeInput = None, end: DateRangeInput = None, interval: Intervals = CLOSED_CLOSED) -> None:
 
-        def _is_dt_type(x):
+        def _is_dt_type(x: object) -> TypeGuard[DateBound]:
             return isinstance(x, (datetime.datetime, datetime.date))
 
-        def _compute_bound(value, desc):
+        def _compute_bound(value: DateRangeInput, desc: str) -> DateBound | None:
             if isinstance(value, bytes):
                 return parse(value.decode('ascii'))
             elif isinstance(value, (int, str)):
@@ -72,11 +76,11 @@ class DateRange(GeneralSlice):
                                  % (self.start, self.end))
 
     @property
-    def unbounded(self):
+    def unbounded(self) -> bool:
         """True if range is unbounded on either or both ends, False otherwise."""
         return self.start is None or self.end is None
 
-    def intersection(self, other):
+    def intersection(self, other: "DateRange") -> "DateRange":
         """
         Create a new DateRange representing the maximal range enclosed by this range and other
         """
@@ -102,7 +106,7 @@ class DateRange(GeneralSlice):
 
         return DateRange(new_start, new_end, interval)
 
-    def as_dates(self):
+    def as_dates(self) -> "DateRange":
         """
         Create a new DateRange with the datetimes converted to dates and changing to CLOSED/CLOSED.
         """
@@ -110,7 +114,7 @@ class DateRange(GeneralSlice):
         new_end = self.end.date() if self.end and isinstance(self.end, datetime.datetime) else self.end
         return DateRange(new_start, new_end, CLOSED_CLOSED)
 
-    def mongo_query(self):
+    def mongo_query(self) -> dict[str, DateBound]:
         """
         Convert a DateRange into a MongoDb query string. FIXME: Mongo can only handle
         datetimes in queries, so we should make this handle the case where start/end are
@@ -126,7 +130,7 @@ class DateRange(GeneralSlice):
             query['$l' + comp[1]] = self.end
         return query
 
-    def get_date_bounds(self):
+    def get_date_bounds(self) -> tuple[str, DateBound | None, str, DateBound | None]:
         """
         Return the upper and lower bounds along
         with operators that are needed to do an 'in range' test.
@@ -154,7 +158,7 @@ class DateRange(GeneralSlice):
 
         return date_gt, start, date_lt, end
 
-    def __contains__(self, d):
+    def __contains__(self, d: DateBound) -> bool:
         if self.interval == CLOSED_CLOSED:
             return (self.start is None or d >= self.start) and (self.end is None or d <= self.end)
         elif self.interval == CLOSED_OPEN:
@@ -164,33 +168,33 @@ class DateRange(GeneralSlice):
 
         return (self.start is None or d > self.start) and (self.end is None or d < self.end)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'DateRange(start=%r, end=%r)' % (self.start, self.end)
 
-    def __eq__(self, rhs):
+    def __eq__(self, rhs: object) -> bool:
         if rhs is None or not (hasattr(rhs, "end") and hasattr(rhs, "start")):
             return False
-        return self.end == rhs.end and self.start == rhs.start
+        return cast(bool, self.end == rhs.end and self.start == rhs.start)
 
-    def __lt__(self, other):
+    def __lt__(self, other: "DateRange") -> bool:
         if self.start is None:
             return True
         if other.start is None:
             return False
-        return self.start < other.start
+        return cast(bool, self.start < other.start)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.start, self.end, self.step, self.interval))
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: int) -> DateBound | None:
         if key == 0:
-            return self.start
+            return cast(DateBound | None, self.start)
         elif key == 1:
-            return self.end
+            return cast(DateBound | None, self.end)
         else:
             raise IndexError('Index %s not in range (0:1)' % key)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%s%s, %s%s" % (
             "(" if self.startopen else "[",
             self.start,
@@ -198,7 +202,7 @@ class DateRange(GeneralSlice):
             ")" if self.endopen else "]",
         )
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict[str, Any]) -> None:
         """Called by pickle, PyYAML etc to set state."""
         self.start = state['start']
         self.end = state['end']

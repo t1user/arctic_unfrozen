@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import optparse
 
 import pymongo
@@ -12,7 +10,7 @@ from ..auth import get_auth
 from ..hooks import get_mongodb_uri
 
 
-def main():
+def main() -> None:
     usage = """usage: %prog [options] arg1=value, arg2=value
 
     Enables sharding on the specified arctic library.

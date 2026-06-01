@@ -22,8 +22,8 @@ def test_delete_version_version_not_found():
         with patch('arctic.store.version_store.logger') as logger:
             vs = version_store.VersionStore(sentinel.connection)
             vs._versions = MagicMock()
-            with patch.object(vs._versions, 'find_one', return_value=None, autospec=True):
-                vs._delete_version(sentinel.symbol, sentinel.version)
+            vs._versions.find_one.return_value = None
+            vs._delete_version(sentinel.symbol, sentinel.version)
     logger.error.assert_called_once_with("Can't delete sentinel.symbol:sentinel.version as not found in DB")
 
 
@@ -200,8 +200,8 @@ def test_prune_previous_versions_0_timeout():
     self._versions = create_autospec(Collection)
     self._versions.with_options.return_value.find.__name__ = 'find'
     self._versions.with_options.return_value.find.return_value = []
-    with patch('arctic.store.version_store.dt') as dt:
-        dt.utcnow.return_value = datetime.datetime(2013, 10, 1)
+    with patch('arctic.store.version_store._utcnow') as utcnow:
+        utcnow.return_value = datetime.datetime(2013, 10, 1)
         VersionStore._find_prunable_version_ids(self, sentinel.symbol, keep_mins=0)
     assert self._versions.with_options.call_args_list == [call(read_preference=ReadPreference.PRIMARY)]
     assert self._versions.with_options.return_value.find.call_args_list == [

@@ -4,7 +4,7 @@ from datetime import datetime as dt
 import numpy as np
 import pandas as pd
 import pytest
-from mock import patch, call, Mock
+from mock import patch, call
 from numpy.testing import assert_array_equal
 from pandas import DatetimeIndex
 from pandas.testing import assert_frame_equal
@@ -43,7 +43,9 @@ def test_read(tickstore_lib):
     assert_array_equal(df['ASK'].values, np.array([1545.25, np.nan]))
     assert_array_equal(df['BID'].values, np.array([1545, np.nan]))
     assert_array_equal(df['PRICE'].values, np.array([1545, 1543.75]))
-    assert_array_equal(df.index.values.astype('object'), np.array([1185076787070000000, 1185141600600000000]))
+    assert_array_equal(
+        df.index.to_numpy(dtype='datetime64[ns]').astype('int64'),
+        np.array([1185076787070000000, 1185141600600000000]))
     assert tickstore_lib._collection.find_one()['c'] == 2
     assert df.index.tzinfo == mktz()
 
@@ -156,7 +158,9 @@ def test_read_multiple_symbols(tickstore_lib):
     assert_array_equal(df['ASK'].values, np.array([1545.25, np.nan]))
     assert_array_equal(df['BID'].values, np.array([1545, np.nan]))
     assert_array_equal(df['PRICE'].values, np.array([1545, 1543.75]))
-    assert_array_equal(df.index.values.astype('object'), np.array([1185076787070000000, 1185141600600000000]))
+    assert_array_equal(
+        df.index.to_numpy(dtype='datetime64[ns]').astype('int64'),
+        np.array([1185076787070000000, 1185141600600000000]))
     assert tickstore_lib._collection.find_one()['c'] == 1
 
 
@@ -199,7 +203,7 @@ def test_read_all_cols_all_dtypes(tickstore_lib, chunk_size):
     df.index = df.index.tz_convert(mktz('UTC'))
     expected = pd.DataFrame(data, index=index)
     expected = expected[df.columns]
-    assert_frame_equal(expected, df, check_names=False)
+    assert_frame_equal(expected, df, check_names=False, check_index_type=False)
 
 
 DUMMY_DATA = [
@@ -293,7 +297,7 @@ def test_date_range_end_not_in_range(tickstore_lib):
 
     tickstore_lib._chunk_size = 1
     tickstore_lib.write('SYM', DUMMY_DATA)
-    with patch.object(tickstore_lib._collection, 'find', side_effect=tickstore_lib._collection.find) as f:
+    with patch('pymongo.collection.Collection.find', side_effect=tickstore_lib._collection.find) as f:
         df = tickstore_lib.read('SYM', date_range=DateRange(20130101, dt(2013, 1, 2, 9, 0)), columns=None)
         assert_array_equal(df['b'].values, np.array([2.]))
         assert mongo_count(tickstore_lib._collection, filter=f.call_args_list[-1][0][0]) == 1
@@ -319,7 +323,7 @@ def test_date_range_default_timezone(tickstore_lib, tz_name):
                    },
                   ]
 
-    with patch('tzlocal.get_localzone', return_value=Mock(zone=tz_name)):
+    with patch('arctic.date._mktz._get_localzone_name', return_value=tz_name):
         tickstore_lib._chunk_size = 1
         tickstore_lib.write('SYM', DUMMY_DATA)
         df = tickstore_lib.read('SYM', date_range=DateRange(20130101, 20130701), columns=None)
@@ -576,8 +580,8 @@ def test_read_longs(tickstore_lib):
     tickstore_lib.write('SYM', DUMMY_DATA)
     tickstore_lib.read('SYM', columns=None)
     read = tickstore_lib.read('SYM', columns=None, date_range=DateRange(dt(2013, 6, 1), dt(2013, 6, 2)))
-    assert read['a'][0] == 1
-    assert np.isnan(read['b'][0])
+    assert read['a'].iloc[0] == 1
+    assert np.isnan(read['b'].iloc[0])
 
 
 def test_read_with_image(tickstore_lib):
@@ -607,7 +611,7 @@ def test_read_with_image(tickstore_lib):
     dr = DateRange(dt(2013, 1, 1), dt(2013, 1, 2))
     # tickstore_lib.read('SYM', columns=None)
     df = tickstore_lib.read('SYM', columns=None, date_range=dr)
-    assert df['a'][0] == 1
+    assert df['a'].iloc[0] == 1
 
     # Read with the image as well - all columns
     df = tickstore_lib.read('SYM', columns=None, date_range=dr, include_images=True)

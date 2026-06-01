@@ -1,7 +1,7 @@
 from datetime import datetime as dt
+from zoneinfo import ZoneInfo
 
 import pytest
-import pytz
 from pandas.testing import assert_frame_equal
 from tests.util import assert_frame_equal_
 
@@ -69,7 +69,7 @@ def test_ts_write_pandas(tickstore_lib):
 
     data = tickstore_lib.read('SYM', columns=None)
     assert data.index[0] == dt(2013, 1, 1, tzinfo=mktz('Europe/London'))
-    assert data.a[0] == 1
+    assert data.a.iloc[0] == 1
     tickstore_lib.delete('SYM')
     tickstore_lib.write('SYM', data)
 
@@ -83,7 +83,7 @@ def test_ts_write_named_col(tickstore_lib):
 
     data = tickstore_lib.read('SYM')
     assert data.index[0] == dt(2013, 1, 1, tzinfo=mktz('Europe/London'))
-    assert data.a[0] == 1
+    assert data.a.iloc[0] == 1
     assert(data.index.name is None)
     data.index.name = 'IndexName'
 
@@ -95,13 +95,13 @@ def test_ts_write_named_col(tickstore_lib):
 
 
 def test_millisecond_roundtrip(tickstore_lib):
-    test_time = dt(2004, 1, 14, 8, 30, 4, 807000, tzinfo=pytz.utc)
+    test_time = dt(2004, 1, 14, 8, 30, 4, 807000, tzinfo=ZoneInfo("UTC"))
 
     data = [{'index': test_time, 'price': 9142.12, 'qualifiers': ''}]
     tickstore_lib.write('blah', data)
 
-    data_range = DateRange(dt(2004, 1, 14, tzinfo=pytz.utc),
-                           dt(2004, 1, 15, tzinfo=pytz.utc))
+    data_range = DateRange(dt(2004, 1, 14, tzinfo=ZoneInfo("UTC")),
+                           dt(2004, 1, 15, tzinfo=ZoneInfo("UTC")))
     reread = tickstore_lib.read('blah', data_range)
 
     assert reread.index[0].to_pydatetime() == test_time

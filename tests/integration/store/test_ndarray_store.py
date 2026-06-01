@@ -1,18 +1,22 @@
-from datetime import datetime as dt, timedelta as dtd
+from datetime import datetime as dt, timedelta as dtd, timezone
 
 import bson
 import numpy as np
 import pytest
 from mock import patch
-from pymongo.server_type import SERVER_TYPE
+from pymongo import ReadPreference
 
 from arctic._config import FwPointersCfg, FW_POINTERS_REFS_KEY
 from arctic._util import mongo_count
 from arctic.store._ndarray_store import NdarrayStore
 from arctic.store.version_store import register_versioned_storage
-from tests.integration.store.test_version_store import _query, FwPointersCtx
+from tests.integration.store.test_version_store import FwPointersCtx
 
 register_versioned_storage(NdarrayStore)
+
+
+def _utcnow():
+    return dt.now(timezone.utc).replace(tzinfo=None)
 
 
 def test_write_new_column_name_to_arctic_1_40_data(ndarray_store_with_uncompressed_write):
@@ -34,14 +38,14 @@ def test_save_read_simple_ndarray(library):
     assert np.all(ndarr == saved_arr)
 
 
-@pytest.mark.xfail(reason="code paths in mongo/pymongo have changed and query no longer called")
 def test_read_simple_ndarray_from_secondary(library_secondary, library_name):
     ndarr = np.ones(1000)
     library_secondary.write('MYARR', ndarr)
-    with patch('pymongo.message.query', side_effect=_query(True, library_name)) as query, \
-         patch('pymongo.server_description.ServerDescription.server_type', SERVER_TYPE.Mongos):
+    with patch.object(
+        library_secondary._versions, 'with_options', wraps=library_secondary._versions.with_options
+    ) as versions_with_options:
         saved_arr = library_secondary.read('MYARR').data
-    assert query.call_count > 0
+    versions_with_options.assert_any_call(read_preference=ReadPreference.NEAREST)
     assert np.all(ndarr == saved_arr)
 
 
@@ -167,10 +171,9 @@ def test_mutable_ndarray(library):
     assert saved_arr.flags['WRITEABLE']
 
 
-@pytest.mark.xfail(reason="delete_version not safe with append...")
 def test_delete_version_shouldnt_break_read(library):
     data = np.arange(30)
-    yesterday = dt.utcnow() - dtd(days=1, seconds=1)
+    yesterday = _utcnow() - dtd(days=1, seconds=1)
     _id = bson.ObjectId.from_datetime(yesterday)
     with patch("bson.ObjectId", return_value=_id):
         library.write('symbol', data, prune_previous_version=False)

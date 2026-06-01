@@ -2,7 +2,7 @@ import inspect
 import struct
 import time
 from datetime import datetime
-from datetime import datetime as dt, timedelta as dtd
+from datetime import datetime as dt, timedelta as dtd, timezone
 
 import bson
 import numpy as np
@@ -11,6 +11,7 @@ import pymongo
 import pytest
 from mock import Mock, patch
 from pandas.testing import assert_frame_equal, assert_series_equal
+from pymongo import ReadPreference
 from pymongo.errors import OperationFailure
 from pymongo.server_type import SERVER_TYPE
 
@@ -33,6 +34,15 @@ ts1 = read_str_as_pandas("""         times | near
                    2012-10-08 17:06:11.040 |  2.0
                    2012-10-09 17:06:11.040 |  2.5
                    2012-11-08 17:06:11.040 |  3.0""")
+
+
+def _utcnow():
+    return dt.now(timezone.utc).replace(tzinfo=None)
+
+
+def _utcnow_tz():
+    return _utcnow().replace(tzinfo=mktz('UTC'))
+
 
 ts2 = read_str_as_pandas("""         times | near
                    2012-09-08 17:06:11.040 |  1.0
@@ -112,29 +122,32 @@ def test_store_item_new_version(library, library_name):
         assert mongo_count(coll.versions) == 2
 
 
-@pytest.mark.xfail(reason="mongo/pymongo codepaths have changed, query no longer called for this")
-def test_store_item_read_preference(library_secondary, library_name):
-    with patch('arctic.arctic.ArcticLibraryBinding.check_quota'), \
-         patch('pymongo.message.query', side_effect=_query(False, library_name)) as query, \
-         patch('pymongo.server_description.ServerDescription.server_type', SERVER_TYPE.Mongos):
+def test_store_item_read_preference(library_secondary):
+    with patch('arctic.arctic.ArcticLibraryBinding.check_quota'), patch.object(
+        library_secondary._versions, 'with_options', wraps=library_secondary._versions.with_options
+    ) as versions_with_options:
         # write an item
         library_secondary.write(symbol, ts1)
         library_secondary.write(symbol, ts1_append, prune_previous_version=False)
         # delete an individual version
         library_secondary._delete_version(symbol, 1)
-    # delete the item entirely
-    library_secondary.delete(symbol)
-    assert query.call_count > 0
+        # delete the item entirely
+        library_secondary.delete(symbol)
+
+    read_preferences = [call.kwargs.get('read_preference') for call in versions_with_options.call_args_list]
+    assert ReadPreference.NEAREST not in read_preferences
+    assert ReadPreference.PRIMARY in read_preferences
 
 
-@pytest.mark.xfail(reason="mongo/pymongo codepaths have changed, query no longer called for this")
 def test_read_item_read_preference_SECONDARY(library_secondary, library_name):
     # write an item
     library_secondary.write(symbol, ts1)
-    with patch('pymongo.message.query', side_effect=_query(True, library_name)) as query, \
-         patch('pymongo.server_description.ServerDescription.server_type', SERVER_TYPE.Mongos):
+    with patch.object(
+        library_secondary._versions, 'with_options', wraps=library_secondary._versions.with_options
+    ) as versions_with_options:
         library_secondary.read(symbol)
-    assert query.call_count > 0
+
+    versions_with_options.assert_any_call(read_preference=ReadPreference.NEAREST)
 
 
 @pytest.mark.parametrize('fw_pointers_cfg', [FwPointersCfg.DISABLED, FwPointersCfg.HYBRID, FwPointersCfg.ENABLED])
@@ -364,7 +377,7 @@ def test_append_corrupted_new_version(library, fw_pointers_cfg):
 
         # Should still be able to append new data
         library.append(symbol, to_append_2, upsert=True)
-        assert library.read(symbol).data['near'][-1] == 40.
+        assert library.read(symbol).data['near'].iloc[-1] == 40.
         assert len(library.read(symbol).data) == len(ts1) + 1
 
 
@@ -382,7 +395,7 @@ def test_list_version(library, fw_pointers_cfg):
     with FwPointersCtx(fw_pointers_cfg):
         assert len(list(library.list_versions(symbol))) == 0
         dates = [None, None, None]
-        now = dt.utcnow().replace(tzinfo=mktz('UTC'))
+        now = _utcnow_tz()
         for x in range(len(dates)):
             dates[x] = now - dtd(minutes=130 - x)
             with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(dates[x])):
@@ -422,7 +435,7 @@ def test_list_version_deleted(library):
 def test_list_version_latest_only(library):
     assert len(list(library.list_versions(symbol))) == 0
     dates = [None, None, None]
-    now = dt.utcnow().replace(tzinfo=mktz('UTC'))
+    now = _utcnow_tz()
     for x in range(len(dates)):
         dates[x] = now - dtd(minutes=20 - x)
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(dates[x])):
@@ -760,7 +773,7 @@ def test_prunes_multiple_versions(library, fw_pointers_cfg):
         a = [{'a': 'b'}]
         c = [{'c': 'd'}]
         # Create an ObjectId
-        now = dt.utcnow()
+        now = _utcnow()
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=125))):
             library.write(symbol, a, prune_previous_version=False)
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=122))):
@@ -786,7 +799,7 @@ def test_prunes_doesnt_prune_snapshots(library, fw_pointers_cfg):
 
         a = [{'a': 'b'}]
         c = [{'c': 'd'}]
-        now = dt.utcnow()
+        now = _utcnow()
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=125))):
             library.write(symbol, a, prune_previous_version=False)
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=122))):
@@ -823,7 +836,7 @@ def test_prunes_multiple_versions_ts(library, fw_pointers_cfg):
         a = ts1
         c = ts2
         # Create an ObjectId
-        now = dt.utcnow()
+        now = _utcnow()
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=125))):
             library.write(symbol, a, prune_previous_version=False)
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=122))):
@@ -849,7 +862,7 @@ def test_prunes_doesnt_prune_snapshots_ts(library, fw_pointers_cfg):
 
         a = ts1
         c = ts2
-        now = dt.utcnow()
+        now = _utcnow()
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=125))):
             library.write(symbol, a, prune_previous_version=False)
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=122))):
@@ -890,7 +903,7 @@ def test_prunes_multiple_versions_fully_different_tss(library, fw_pointers_cfg):
         c.index = [i + dtd(days=365) for i in c.index]
         c.index.name = b.index.name
         # Create an ObjectId
-        now = dt.utcnow()
+        now = _utcnow()
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=125))):
             library.write(symbol, a, prune_previous_version=False)
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=124))):
@@ -921,7 +934,7 @@ def test_prunes_doesnt_prune_snapshots_fully_different_tss(library, fw_pointers_
         c = b.copy()
         c.index = [i + dtd(days=365) for i in c.index]
         c.index.name = b.index.name
-        now = dt.utcnow()
+        now = _utcnow()
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=125))):
             library.write(symbol, a, prune_previous_version=False)
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=123))):
@@ -959,20 +972,20 @@ def test_prunes_doesnt_prune_snapshots_fully_different_tss(library, fw_pointers_
 def test_prunes_previous_version_append_interaction(library, fw_pointers_cfg):
     with FwPointersCtx(fw_pointers_cfg):
         ts = ts1
-        ts2 = ts1.append(pd.DataFrame(index=[ts.index[-1] + dtd(days=1),
-                                             ts.index[-1] + dtd(days=2), ],
-                                      data=[3.7, 3.8],
-                                      columns=['near']))
+        ts2 = pd.concat([ts1, pd.DataFrame(index=[ts.index[-1] + dtd(days=1),
+                                                  ts.index[-1] + dtd(days=2), ],
+                                           data=[3.7, 3.8],
+                                           columns=['near'])])
         ts2.index.name = ts1.index.name
-        ts3 = ts.append(pd.DataFrame(index=[ts2.index[-1] + dtd(days=1),
-                                            ts2.index[-1] + dtd(days=2)],
-                                     data=[4.8, 4.9],
-                                     columns=['near']))
+        ts3 = pd.concat([ts, pd.DataFrame(index=[ts2.index[-1] + dtd(days=1),
+                                                 ts2.index[-1] + dtd(days=2)],
+                                          data=[4.8, 4.9],
+                                          columns=['near'])])
         ts3.index.name = ts1.index.name
         ts4 = ts
         ts5 = ts2
         ts6 = ts3
-        now = dt.utcnow()
+        now = _utcnow()
         with patch("bson.ObjectId", return_value=bson.ObjectId.from_datetime(now - dtd(minutes=130)),
                                     from_datetime=bson.ObjectId.from_datetime):
             library.write(symbol, ts, prune_previous_version=False)
@@ -1150,7 +1163,7 @@ def test_append_after_empty(library, fw_pointers_cfg):
 def _rnd_df(nrows, ncols):
     ret_df = pd.DataFrame(np.random.randn(nrows, ncols),
                           index=pd.date_range('20170101',
-                          periods=nrows, freq='S'),
+                          periods=nrows, freq='s'),
                           columns=[chr(i) for i in range(ord('a'), ord('a')+ncols)])
     ret_df.index.name = 'index'
     return ret_df
@@ -1193,7 +1206,7 @@ def test_write_metadata_followed_by_append(library, fw_pointers_cfg):
             library._prune_previous_versions(symbol, 0)
 
             v = library.read(symbol)
-            assert_frame_equal_(v.data, mydf_a.append(mydf_b), check_freq=False)
+            assert_frame_equal_(v.data, pd.concat([mydf_a, mydf_b]), check_freq=False)
             assert v.metadata == {'field_c': 1}
             assert library._read_metadata(symbol).get('version') == 3
             assert_frame_equal_(library.read(symbol, as_of=1).data, mydf_a, check_freq=False)
@@ -1221,7 +1234,7 @@ def test_write_metadata_after_append(library, fw_pointers_cfg):
             library.append(symbol, data=mydf_b, metadata={'field_a': 2})  # creates version 2
             library.write_metadata(symbol, metadata={'field_b': 1})  # creates version 3
             v = library.read(symbol)
-            assert_frame_equal_(v.data, mydf_a.append(mydf_b), check_freq=False)
+            assert_frame_equal_(v.data, pd.concat([mydf_a, mydf_b]), check_freq=False)
             assert v.metadata == {'field_b': 1}
             assert library._read_metadata(symbol).get('version') == 3
 
@@ -1350,7 +1363,7 @@ def test_restore_version_followed_by_append(library, fw_pointers_cfg):
             time.sleep(2)
 
             item = library.read(symbol)
-            assert_frame_equal_(item.data, mydf_a.append(mydf_c), check_freq=False)
+            assert_frame_equal_(item.data, pd.concat([mydf_a, mydf_c]), check_freq=False)
             assert item.metadata == {'field_c': 3}
             assert library._read_metadata(symbol).get('version') == 4
 
@@ -1782,13 +1795,14 @@ def test_fwpointers_mixed_scenarios(library, write_cfg, read_cfg, append_cfg, re
             assert last_v.get('append_count', 0) == 0
 
     orig_check_written = arctic.store._ndarray_store.NdarrayStore.check_written
-    outer = {'round': -1,     # unfortunately "nonlocal" keyword is not available in Python 2, this is a workaround
-             'raised': False}
+    round_counter = -1
+    raised = False
 
     def _mock_check_written(self, collection, symbol, version):
-        outer['round'] += 1
-        if outer['round'] % 2 == 0:
-            outer['raised'] = True
+        nonlocal round_counter, raised
+        round_counter += 1
+        if round_counter % 2 == 0:
+            raised = True
             raise pymongo.errors.OperationFailure("Failed to write all the chunks. Mocked failure.")
         orig_check_written(collection, symbol, version)
 
@@ -1822,7 +1836,7 @@ def test_fwpointers_mixed_scenarios(library, write_cfg, read_cfg, append_cfg, re
         with FwPointersCtx(reread_cfg):
             assert_frame_equal_(mydf, library.read(symbol=symbol).data)
 
-    assert outer['raised']
+    assert raised
 
 
 def test_fwpointers_writemetadata_enabled_disabled(library):

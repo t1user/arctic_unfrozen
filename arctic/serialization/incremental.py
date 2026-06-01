@@ -2,6 +2,8 @@ import abc
 import hashlib
 import logging
 from threading import RLock
+from collections.abc import Iterator
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -14,19 +16,17 @@ from .._config import MAX_DOCUMENT_SIZE
 from .._util import NP_OBJECT_DTYPE
 from ..exceptions import ArcticSerializationException
 
-ABC = abc.ABCMeta('ABC', (object,), {})
-
 log = logging.getLogger(__name__)
 
 
-def incremental_checksum(item, curr_sha=None):
+def incremental_checksum(item: bytes, curr_sha: Any | None = None) -> Any:
     curr_sha = hashlib.sha1() if curr_sha is None else curr_sha
     curr_sha.update(item)
     return curr_sha
 
 
-class LazyIncrementalSerializer(ABC):
-    def __init__(self, serializer, input_data, chunk_size):
+class LazyIncrementalSerializer(object, metaclass=abc.ABCMeta):
+    def __init__(self, serializer: Any, input_data: Any, chunk_size: int | float) -> None:
         if chunk_size < 1:
             raise ArcticSerializationException("LazyIncrementalSerializer can't be initialized "
                                                "with chunk_size < 1 ({})".format(chunk_size))
@@ -40,24 +40,30 @@ class LazyIncrementalSerializer(ABC):
         self._checksum = None
 
     @abc.abstractmethod
-    def __len__(self):
+    def __len__(self) -> int:
         pass
 
     @abc.abstractproperty
-    def generator(self):
+    def generator(self) -> Any:
         pass
 
     @abc.abstractproperty
-    def generator_bytes(self):
+    def generator_bytes(self) -> Any:
         pass
 
     @abc.abstractproperty
-    def serialize(self):
+    def serialize(self) -> Any:
         pass
 
 
 class IncrementalPandasToRecArraySerializer(LazyIncrementalSerializer):
-    def __init__(self, serializer, input_data, chunk_size, string_max_len=None):
+    def __init__(
+        self,
+        serializer: Any,
+        input_data: pd.DataFrame | pd.Series,
+        chunk_size: int | float,
+        string_max_len: int | None = None,
+    ) -> None:
         super(IncrementalPandasToRecArraySerializer, self).__init__(serializer, input_data, chunk_size)
         if not isinstance(serializer, PandasSerializer):
             raise ArcticSerializationException("IncrementalPandasToRecArraySerializer requires a serializer of "
@@ -70,22 +76,22 @@ class IncrementalPandasToRecArraySerializer(LazyIncrementalSerializer):
                                                "with string_max_len < 1 ({})".format(string_max_len))
         self.string_max_len = string_max_len
         # The state which needs to be lazily initialized
-        self._dtype = None
-        self._shape = None
+        self._dtype: Any | None = None
+        self._shape: tuple[Any, ...] | None = None
         self._rows_per_chunk = 0
         self._total_chunks = 0
         self._has_string_object = False
         self._lock = RLock()
 
-    def _dtype_convert_to_max_len_string(self, input_ndtype, fname):
-        if input_ndtype.type not in (np.string_, np.unicode_):
+    def _dtype_convert_to_max_len_string(self, input_ndtype: Any, fname: Any) -> tuple[Any, bool]:
+        if input_ndtype.type not in (np.bytes_, np.str_):
             return input_ndtype, False
-        type_sym = 'S' if input_ndtype.type == np.string_ else 'U'
+        type_sym = 'S' if input_ndtype.type == np.bytes_ else 'U'
         max_str_len = len(max(self.input_data[fname].astype(type_sym), key=len))
         str_field_dtype = np.dtype('{}{:d}'.format(type_sym, max_str_len)) if max_str_len > 0 else input_ndtype
         return str_field_dtype, True
 
-    def _get_dtype(self):
+    def _get_dtype(self) -> tuple[Any, Any, bool]:
         # Serializer is being called only if can_convert_to_records_without_objects() has passed,
         # which means that the resulting recarray does not contain objects but only numpy types, string, or unicode
 
@@ -117,7 +123,7 @@ class IncrementalPandasToRecArraySerializer(LazyIncrementalSerializer):
             dtype_arr.append((field_name, field_dtype))
         return first_chunk, np.dtype(dtype_arr), has_string_object
 
-    def _lazy_init(self):
+    def _lazy_init(self) -> None:
         if self._initialized:
             return
 
@@ -143,9 +149,9 @@ class IncrementalPandasToRecArraySerializer(LazyIncrementalSerializer):
             self._initialized = True
 
     @staticmethod
-    def _calculate_rows_per_chunk(max_chunk_size, chunk):
+    def _calculate_rows_per_chunk(max_chunk_size: int | float, chunk: Any) -> int:
         sze = int(chunk.dtype.itemsize * np.prod(chunk.shape[1:]))
-        sze = sze if sze < max_chunk_size else max_chunk_size
+        sze = int(sze if sze < max_chunk_size else max_chunk_size)
         rows_per_chunk = int(max_chunk_size / sze)
         if rows_per_chunk < 1 and ARCTIC_AUTO_EXPAND_CHUNK_SIZE:
             # If a row size is larger than chunk_size, use the maximum document size
@@ -157,42 +163,47 @@ class IncrementalPandasToRecArraySerializer(LazyIncrementalSerializer):
             raise ArcticSerializationException("Serialization failed to split data into max sized chunks.")
         return rows_per_chunk
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.input_data)
 
     @property
-    def shape(self):
+    def shape(self) -> Any:
         self._lazy_init()
         return self._shape
 
     @property
-    def dtype(self):
+    def dtype(self) -> Any:
         self._lazy_init()
         return self._dtype
 
     @property
-    def rows_per_chunk(self):
+    def rows_per_chunk(self) -> int:
         self._lazy_init()
         return self._rows_per_chunk
 
-    def checksum(self, from_idx, to_idx):
+    def checksum(self, from_idx: int | None, to_idx: int | None) -> Binary:
         if self._checksum is None:
             self._lazy_init()
             total_sha = None
-            for chunk_bytes, dtype in self.generator_bytes(from_idx=from_idx, to_idx=to_idx):
+            for chunk_bytes, _, _, _ in self.generator_bytes(from_idx=from_idx, to_idx=to_idx):
                 # TODO: what about compress_array here in batches?
                 compressed_chunk = compress(chunk_bytes)
                 total_sha = incremental_checksum(compressed_chunk, curr_sha=total_sha)
+            assert total_sha is not None
             self._checksum = Binary(total_sha.digest())
         return self._checksum
 
-    def generator(self, from_idx=None, to_idx=None):
+    def generator(self, from_idx: int | None = None, to_idx: int | None = None) -> Iterator[tuple[Any, Any, int, int]]:
         return self._generator(from_idx=from_idx, to_idx=to_idx)
 
-    def generator_bytes(self, from_idx=None, to_idx=None):
+    def generator_bytes(
+        self, from_idx: int | None = None, to_idx: int | None = None
+    ) -> Iterator[tuple[Any, Any, int, int]]:
         return self._generator(from_idx=from_idx, to_idx=to_idx, get_bytes=True)
 
-    def _generator(self, from_idx, to_idx, get_bytes=False):
+    def _generator(
+        self, from_idx: int | None, to_idx: int | None, get_bytes: bool = False
+    ) -> Iterator[tuple[Any, Any, int, int]]:
         # Note that the range is: [from_idx, to_idx)
         self._lazy_init()
 
@@ -225,5 +236,5 @@ class IncrementalPandasToRecArraySerializer(LazyIncrementalSerializer):
             yield chunk, self.dtype, from_idx, curr_stop
             from_idx = curr_stop
 
-    def serialize(self):
+    def serialize(self) -> Any:
         return self._serializer.serialize(self.input_data, self.string_max_len)

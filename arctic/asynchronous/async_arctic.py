@@ -1,9 +1,10 @@
 import logging
 import time
 from collections import defaultdict
-from threading import RLock
-
+from collections.abc import Callable, Iterable, Sequence
 from concurrent.futures import FIRST_COMPLETED
+from threading import RLock
+from typing import Any, ClassVar, cast
 
 from ._workers_pool import LazySingletonTasksCoordinator
 from .async_utils import AsyncRequestType, AsyncRequest
@@ -11,7 +12,7 @@ from ..decorators import mongo_retry
 from ..exceptions import AsyncArcticException
 
 
-def _arctic_task_exec(request):
+def _arctic_task_exec(request: AsyncRequest) -> Any:
     request.start_time = time.time()
     logging.debug("Executing asynchronous request for {}/{}".format(request.library, request.symbol))
     result = None
@@ -31,34 +32,40 @@ def _arctic_task_exec(request):
 
 
 class AsyncArctic(LazySingletonTasksCoordinator):
-    _instance = None
-    _SINGLETON_LOCK = RLock()
-    _POOL_LOCK = RLock()
+    _instance: ClassVar[Any | None] = None
+    _SINGLETON_LOCK: ClassVar[RLock] = RLock()
+    _POOL_LOCK: ClassVar[RLock] = RLock()
+    requests_per_library: Any
+    requests_by_id: dict[Any, AsyncRequest]
+    local_shutdown: bool
+    deferred_requests: list[AsyncRequest]
 
-    def __init__(self, pool_size):
+    def __init__(self, pool_size: int | str) -> None:
         # Only allow creation via get_instance
-        if not type(self)._SINGLETON_LOCK._is_owned():
+        if not cast(Any, type(self)._SINGLETON_LOCK)._is_owned():
             raise AsyncArcticException("AsyncArctic is a singleton, can't create a new instance")
 
         # Enforce the singleton pattern
         with type(self)._SINGLETON_LOCK:
             super(AsyncArctic, self).__init__(pool_size)
-            self.requests_per_library = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-            self.requests_by_id = dict()
+            self.requests_per_library: Any = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+            self.requests_by_id: dict[Any, AsyncRequest] = dict()
             self.local_shutdown = False
-            self.deferred_requests = list()
+            self.deferred_requests: list[AsyncRequest] = list()
 
-    def __reduce__(self):
+    def __reduce__(self) -> str:
         return "ASYNC_ARCTIC"
 
-    def _get_modifiers(self, library_name, symbol=None):
-        return self.requests_per_library[library_name][symbol][AsyncRequestType.MODIFIER]
+    def _get_modifiers(self, library_name: str | None, symbol: str | None = None) -> list[AsyncRequest]:
+        return cast(list[AsyncRequest], self.requests_per_library[library_name][symbol][AsyncRequestType.MODIFIER])
 
-    def _get_accessors(self, library_name, symbol=None):
-        return self.requests_per_library[library_name][symbol][AsyncRequestType.ACCESSOR]
+    def _get_accessors(self, library_name: str | None, symbol: str | None = None) -> list[AsyncRequest]:
+        return cast(list[AsyncRequest], self.requests_per_library[library_name][symbol][AsyncRequestType.ACCESSOR])
 
     @staticmethod
-    def _verify_request(store, is_modifier, **kwargs):
+    def _verify_request(
+        store: Any, is_modifier: bool, **kwargs: Any
+    ) -> tuple[str | None, str | None, AsyncRequestType, Callable[..., Any] | None, bool]:
         library_name = None if store is None else store._arctic_lib.get_name()
         symbol = kwargs.get('symbol')
         kind = AsyncRequestType.MODIFIER if is_modifier else AsyncRequestType.ACCESSOR
@@ -66,20 +73,20 @@ class AsyncArctic(LazySingletonTasksCoordinator):
         mongo_retry = bool(kwargs.get('mongo_retry'))
         return library_name, symbol, kind, callback, mongo_retry
 
-    def _is_clashing(self, request):
+    def _is_clashing(self, request: AsyncRequest) -> bool:
         return bool(self._get_modifiers(request.library, request.symbol) or
                     request.kind is AsyncRequestType.MODIFIER and self._get_accessors(request.library, request.symbol))
 
-    def _add_request(self, request):
+    def _add_request(self, request: AsyncRequest) -> None:
         self.requests_per_library[request.library][request.symbol][request.kind].append(request)
         self.requests_by_id[request.id] = request
 
-    def _remove_request(self, request):
+    def _remove_request(self, request: AsyncRequest) -> None:
         self.requests_per_library[request.library][request.symbol][request.kind].remove(request)
         if request.id in self.requests_by_id:
             del self.requests_by_id[request.id]
 
-    def _schedule_request(self, request):
+    def _schedule_request(self, request: AsyncRequest) -> None:
         try:
             new_id, new_future = self.submit_task(False, _arctic_task_exec, request)
             request.id = new_id
@@ -92,7 +99,9 @@ class AsyncArctic(LazySingletonTasksCoordinator):
             self._remove_request(request)
             raise
 
-    def submit_arctic_request(self, store, fun, is_modifier, *args, **kwargs):
+    def submit_arctic_request(
+        self, store: Any, fun: Callable[..., Any], is_modifier: bool, *args: Any, **kwargs: Any
+    ) -> AsyncRequest:
         lib_name, symbol, kind, callback, mongo_retry = AsyncArctic._verify_request(store, is_modifier, **kwargs)
 
         for k in ('async_callback', 'mongo_retry'):
@@ -113,7 +122,7 @@ class AsyncArctic(LazySingletonTasksCoordinator):
 
         return request
 
-    def _reschedule_deferred(self):
+    def _reschedule_deferred(self) -> None:
         picked = None
         try:
             for deferred in self.deferred_requests:
@@ -124,9 +133,10 @@ class AsyncArctic(LazySingletonTasksCoordinator):
         except:
             logging.exception("Failed to re-schedule a deferred task: {}".format(picked))
             return
-        self.deferred_requests.remove(picked)
+        if picked is not None:
+            self.deferred_requests.remove(picked)
 
-    def _request_finished(self, request):
+    def _request_finished(self, request: AsyncRequest) -> None:
         with type(self)._POOL_LOCK:
             self._remove_request(request)
             if self.deferred_requests:
@@ -138,7 +148,7 @@ class AsyncArctic(LazySingletonTasksCoordinator):
         if callable(request.callback):
             request.callback(request)
 
-    def reset(self, pool_size=None, timeout=None):
+    def reset(self, pool_size: int | str | None = None, timeout: float | None = None) -> None:
         self.shutdown(timeout=timeout)
         self.await_termination(timeout=timeout)
         super(AsyncArctic, self).reset(pool_size, timeout)
@@ -148,7 +158,7 @@ class AsyncArctic(LazySingletonTasksCoordinator):
             self.local_shutdown = False
             self.deferred_requests = list()
 
-    def shutdown(self, timeout=None):
+    def shutdown(self, timeout: float | None = None) -> None:
         if self.local_shutdown:
             return
         with type(self)._POOL_LOCK:
@@ -158,18 +168,23 @@ class AsyncArctic(LazySingletonTasksCoordinator):
                 # is updated only after the deferred request is scheduled
                 super(AsyncArctic, self).shutdown(timeout=timeout)
 
-    def await_termination(self, timeout=None):
+    def await_termination(self, timeout: float | None = None) -> None:
         while self.total_pending_requests() > 0:
-            AsyncArctic.wait_requests(self.requests_by_id.values() + self.deferred_requests,
-                                      do_raise=False, timeout=timeout)
+            AsyncArctic.wait_requests(
+                list(self.requests_by_id.values()) + self.deferred_requests,
+                do_raise=False,
+                timeout=timeout,
+            )
         # super(AsyncArctic, self).await_termination(timeout)
 
-    def total_pending_requests(self):
+    def total_pending_requests(self) -> int:
         with type(self)._POOL_LOCK:  # the lock here is "really" necessary
             return len(self.requests_by_id) + len(self.deferred_requests)
 
     @staticmethod
-    def _wait_until_scheduled(requests, timeout=None, check_interval=0.1):
+    def _wait_until_scheduled(
+        requests: Iterable[AsyncRequest], timeout: float | None = None, check_interval: float = 0.1
+    ) -> bool:
         start = time.time()
         while True:
             if any(r for r in requests if r.future is None):
@@ -181,16 +196,19 @@ class AsyncArctic(LazySingletonTasksCoordinator):
         return False
 
     @staticmethod
-    def wait_request(request, do_raise=False, timeout=None):
+    def wait_request(request: AsyncRequest | None, do_raise: bool = False, timeout: float | None = None) -> None:
         if request is None:
             return
         if not AsyncArctic._wait_until_scheduled((request,), timeout):
             raise AsyncArcticException("Timed-out while waiting for request to be scheduled")
-        while request.is_completed:
-            AsyncArctic.wait_tasks((request.future,), timeout=timeout, raise_exceptions=do_raise)
+        future = request.future
+        if future is None:
+            raise AsyncArcticException("Request has not been scheduled")
+        while not request.is_completed:
+            AsyncArctic.wait_tasks((future,), timeout=timeout, raise_exceptions=do_raise)
 
     @staticmethod
-    def wait_requests(requests, do_raise=False, timeout=None):
+    def wait_requests(requests: Sequence[AsyncRequest], do_raise: bool = False, timeout: float | None = None) -> None:
         if not AsyncArctic._wait_until_scheduled(requests, timeout):
             raise AsyncArcticException("Timed-out while waiting for request to be scheduled")
         while requests and not all(r.is_completed for r in requests):
@@ -198,7 +216,9 @@ class AsyncArctic(LazySingletonTasksCoordinator):
                                    timeout=timeout, raise_exceptions=do_raise)
 
     @staticmethod
-    def wait_any_request(requests, do_raise=False, timeout=None):
+    def wait_any_request(
+        requests: Sequence[AsyncRequest], do_raise: bool = False, timeout: float | None = None
+    ) -> None:
         if not AsyncArctic._wait_until_scheduled(requests, timeout):
             raise AsyncArcticException("Timed-out while waiting for request to be scheduled")
         while requests and not any(r.is_completed for r in requests):
@@ -206,23 +226,27 @@ class AsyncArctic(LazySingletonTasksCoordinator):
                                    timeout=timeout, return_when=FIRST_COMPLETED, raise_exceptions=do_raise)
 
     @staticmethod
-    def filter_finished_requests(requests, do_raise=True):
+    def filter_finished_requests(
+        requests: Sequence[AsyncRequest], do_raise: bool = True
+    ) -> tuple[list[AsyncRequest], list[AsyncRequest]]:
         if not requests:
-            return requests, requests
+            return [], []
         alive_requests = [r for r in requests if not r.is_completed]
         done_requests = [r for r in requests if r.is_completed]
         if do_raise:
-            AsyncArctic.raise_errored(done_requests)
+            AsyncArctic.raise_first_errored(done_requests)
         return alive_requests, done_requests
 
     @staticmethod
-    def raise_first_errored(requests):
+    def raise_first_errored(requests: Iterable[AsyncRequest]) -> None:
         errored = tuple(r for r in requests if r.is_completed and r.exception is not None)
         if errored:
-            raise errored[0].exception
+            exception = errored[0].exception
+            assert exception is not None
+            raise exception
 
     @staticmethod
-    def filter_errored(requests):
+    def filter_errored(requests: Iterable[AsyncRequest]) -> tuple[AsyncRequest, ...]:
         return tuple(r for r in requests if r.is_completed and r.exception is not None)
 
 

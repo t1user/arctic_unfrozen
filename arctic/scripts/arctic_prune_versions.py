@@ -1,7 +1,7 @@
-from __future__ import print_function
-
 import logging
 import optparse
+from collections.abc import Iterable
+from typing import Any
 
 import pymongo
 
@@ -12,7 +12,7 @@ from ..hooks import get_mongodb_uri
 logger = logging.getLogger(__name__)
 
 
-def prune_versions(lib, symbols, keep_mins):
+def prune_versions(lib: Any, symbols: Iterable[str], keep_mins: int | str) -> None:
     logger.info("Fixing snapshot pointers")
     lib._cleanup_orphaned_versions(dry_run=False)
     for symbol in symbols:
@@ -20,7 +20,7 @@ def prune_versions(lib, symbols, keep_mins):
         lib._prune_previous_versions(symbol, keep_mins=keep_mins)
 
 
-def main():
+def main() -> None:
     usage = """usage: %prog [options]
 
     Prunes (i.e. deletes) versions of data that are not the most recent, and are older than 10 minutes,

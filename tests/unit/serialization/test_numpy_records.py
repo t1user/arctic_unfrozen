@@ -1,14 +1,15 @@
 import datetime
 import re
+from zoneinfo import ZoneInfo
 
 import dateutil
 import numpy as np
 import pandas as pd
-import pytz
 import pytest
 from mock import patch, Mock, sentinel
 from numpy.testing import assert_array_equal
 from pandas import Timestamp
+from pandas.testing import assert_frame_equal
 
 import arctic.serialization.numpy_records as anr
 
@@ -115,12 +116,12 @@ def test_can_convert_to_records_without_objects_returns_true_otherwise(fast_seri
     ["tz", "expected_tz_str_pat"],
     [
         ("UTC", r"^UTC$"),
-        (pytz.utc, r"^UTC$"),
+        (ZoneInfo("UTC"), r"^UTC$"),
         (dateutil.tz.tzutc(), r"^UTC$"),
         (dateutil.tz.gettz("UTC"), r"^dateutil/.+UTC"),
         *([(datetime.timezone.utc, r"^UTC$")] if hasattr(datetime, "timezone") else []),
-        (pytz.timezone("Europe/London"), r"^Europe/London$"),
-        (pytz.timezone("America/New_York"), r"^America/New_York$"),
+        (ZoneInfo("Europe/London"), r"^Europe/London$"),
+        (ZoneInfo("America/New_York"), r"^America/New_York$"),
         (dateutil.tz.gettz("Europe/London"), r"^dateutil/.+Europe/London"),
         (dateutil.tz.gettz("America/New_York"), r"^dateutil/.+America/New_York"),
     ],
@@ -182,6 +183,19 @@ def test_dataframe_serializer_serialize_tz_index(
             assert re.search(expected_tz_str_pat, index_lvl_tz)
 
 
+def test_dataframe_serializer_roundtrips_unnamed_index():
+    serializer = anr.DataFrameSerializer()
+    df = pd.DataFrame(index=[datetime.datetime(2012, 1, 1), datetime.datetime(2012, 1, 2)],
+                      data={'data': [1., 2.]})
+
+    result_records, result_dtype = serializer.serialize(df)
+    records_with_metadata = np.array(result_records.tolist(), dtype=result_dtype)
+
+    assert result_dtype.metadata["index"] == ["index"]
+    assert result_dtype.metadata["index_names"] == [None]
+    assert_frame_equal(serializer.deserialize(records_with_metadata), df)
+
+
 @pytest.mark.parametrize("fast_serializable_check", (False, True))
 def test_can_convert_to_records_mixed_object_column_string_nan(fast_serializable_check):
     with FastCheckSerializable(fast_serializable_check):
@@ -193,22 +207,22 @@ def test_can_convert_to_records_mixed_object_column_string_nan(fast_serializable
         df = pd.DataFrame({'a': [1, 3, 4], 'b': [1, 8.0, 2]})
         assert serializer.can_convert_to_records_without_objects(df, 'my_symbol')
 
-        df = pd.DataFrame({'a': [1, 3, 4], 'b': [1.2, 8.0, np.NaN]})
+        df = pd.DataFrame({'a': [1, 3, 4], 'b': [1.2, 8.0, np.nan]})
         assert serializer.can_convert_to_records_without_objects(df, 'my_symbol')
 
-        df = pd.DataFrame({'a': ['abc', 'cde', 'def'], 'b': [1.2, 8.0, np.NaN]})
+        df = pd.DataFrame({'a': ['abc', 'cde', 'def'], 'b': [1.2, 8.0, np.nan]})
         assert serializer.can_convert_to_records_without_objects(df, 'my_symbol')
 
-        df = pd.DataFrame({'a': [u'abc', u'cde', 'def'], 'b': [1.2, 8.0, np.NaN]})
+        df = pd.DataFrame({'a': [u'abc', u'cde', 'def'], 'b': [1.2, 8.0, np.nan]})
         assert serializer.can_convert_to_records_without_objects(df, 'my_symbol')
 
-        df = pd.DataFrame({'a': [u'abc', u'cde', 'def'], 'b': [1.2, '8.0', np.NaN]})
+        df = pd.DataFrame({'a': [u'abc', u'cde', 'def'], 'b': [1.2, '8.0', np.nan]})
         assert not serializer.can_convert_to_records_without_objects(df, 'my_symbol')
 
         # Do not serialize and force-stringify None
-        df = pd.DataFrame({'a': ['abc', None, 'def'], 'b': [1.2, 8.0, np.NaN]})
+        df = pd.DataFrame({'a': ['abc', None, 'def'], 'b': [1.2, 8.0, np.nan]})
         assert not serializer.can_convert_to_records_without_objects(df, 'my_symbol')
 
-        # Do not serialize and force-stringify np.NaN among strings, rather pickle
-        df = pd.DataFrame({'a': ['abc', np.NaN, 'def'], 'b': [1.2, 8.0, np.NaN]})
+        # Do not serialize and force-stringify np.nan among strings, rather pickle
+        df = pd.DataFrame({'a': ['abc', np.nan, 'def'], 'b': [1.2, 8.0, np.nan]})
         assert not serializer.can_convert_to_records_without_objects(df, 'my_symbol')

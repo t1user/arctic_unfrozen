@@ -5,13 +5,8 @@ from datetime import datetime as dt, timedelta as dtd
 import numpy as np
 import pandas as pd
 import pytest
-from dateutil.rrule import rrule, DAILY
 from mock import Mock, patch
 from pandas import DataFrame, Series, DatetimeIndex, MultiIndex, read_csv, date_range, concat
-try:
-    from pandas import Panel
-except ImportError:
-    pass
 from pandas.tseries.offsets import DateOffset
 from pandas.testing import assert_frame_equal, assert_series_equal
 from io import StringIO
@@ -185,14 +180,14 @@ def test_save_read_empty_dataframe(library):
 
 
 def test_save_read_pandas_dataframe2(library):
-    df = DataFrame(data=[1, 2, 3], index=pd.date_range(start='1/1/2011', periods=3, freq='H'))
+    df = DataFrame(data=[1, 2, 3], index=pd.date_range(start='1/1/2011', periods=3, freq='h'))
     library.write('pandas', df)
     saved_df = library.read('pandas').data
     assert np.all(df.values == saved_df.values)
 
 
 def test_save_read_pandas_dataframe_strings(library):
-    df = DataFrame(data=['a', 'b', 'c'], index=pd.date_range(start='1/1/2011', periods=3, freq='H'))
+    df = DataFrame(data=['a', 'b', 'c'], index=pd.date_range(start='1/1/2011', periods=3, freq='h'))
     library.write('pandas', df)
     saved_df = library.read('pandas').data
     assert np.all(df.values == saved_df.values)
@@ -237,7 +232,7 @@ def test_append_pandas_multi_columns_dataframe(library):
 
     saved = library.read('test')
 
-    df = df.append(df2)
+    df = pd.concat([df, df2])
     assert df.columns.equal_levels(saved.data.columns)
     assert np.all(saved.data.columns == df.columns)
     assert np.all(saved.data.columns.names == df.columns.names)
@@ -255,7 +250,7 @@ def test_append_pandas_multi_columns_dataframe_new_column(library):
 
     saved = library.read('test')
 
-    df = df.append(df2)
+    df = pd.concat([df, df2])
     columns = list(itertools.product(["bar", "baz", "foo", "qux"], ["one", "two"]))
     assert np.all(saved.data[columns] == df[columns]).all()
     assert np.all(saved.data['bar', 'three'][2:] == df['bar', 'three'][2:])
@@ -331,12 +326,12 @@ def test_save_read_multi_index_and_multi_columns_dataframe(library):
 
 
 def test_append_pandas_dataframe(library):
-    df = DataFrame(data=[1, 2, 3], index=pd.date_range(start='1/1/2011', periods=3, freq='H'))
-    df2 = DataFrame(data=[4, 5, 6], index=pd.date_range(start='2/1/2011', periods=3, freq='H'))
+    df = DataFrame(data=[1, 2, 3], index=pd.date_range(start='1/1/2011', periods=3, freq='h'))
+    df2 = DataFrame(data=[4, 5, 6], index=pd.date_range(start='2/1/2011', periods=3, freq='h'))
     library.write('pandas', df)
     library.append('pandas', df2)
     saved_df = library.read('pandas').data
-    assert np.all(df.append(df2).values == saved_df.values)
+    assert np.all(pd.concat([df, df2]).values == saved_df.values)
 
 
 def test_empty_dataframe_multindex(library):
@@ -349,21 +344,21 @@ def test_empty_dataframe_multindex(library):
 
 
 def test_dataframe_append_empty(library):
-    df = DataFrame(data=[1, 2, 3], index=pd.date_range(start='1/1/2011', periods=3, freq='H'))
+    df = DataFrame(data=[1, 2, 3], index=pd.date_range(start='1/1/2011', periods=3, freq='h'))
     df2 = DataFrame(data=[], index=[])
     library.write('pandas', df)
     library.append('pandas', df2)
     saved_df = library.read('pandas').data
-    assert np.all(df.append(df2).values == saved_df.values)
+    assert np.all(pd.concat([df, df2]).values == saved_df.values)
 
 
 def test_empy_dataframe_append(library):
     df = DataFrame(data=[], index=[])
-    df2 = DataFrame(data=[1, 2, 3], index=pd.date_range(start='1/1/2011', periods=3, freq='H'))
+    df2 = DataFrame(data=[1, 2, 3], index=pd.date_range(start='1/1/2011', periods=3, freq='h'))
     library.write('pandas', df)
     library.append('pandas', df2)
     saved_df = library.read('pandas').data
-    assert np.all(df.append(df2).values == saved_df.values)
+    assert np.all(pd.concat([df, df2]).values == saved_df.values)
 
 
 def test_dataframe_append_empty_multiindex(library):
@@ -372,7 +367,7 @@ def test_dataframe_append_empty_multiindex(library):
     library.write('pandas', df)
     library.append('pandas', df2)
     saved_df = library.read('pandas').data
-    assert np.all(df.append(df2).values == saved_df.values)
+    assert np.all(pd.concat([df, df2]).values == saved_df.values)
     assert np.all(df.index.names == saved_df.index.names)
 
 
@@ -382,7 +377,7 @@ def test_empty_dataframe_append_multiindex(library):
     library.write('pandas', df)
     library.append('pandas', df2)
     saved_df = library.read('pandas').data
-    assert np.all(df.append(df2).values == saved_df.values)
+    assert np.all(pd.concat([df, df2]).values == saved_df.values)
     assert np.all(df.index.names == saved_df.index.names)
 
 
@@ -406,14 +401,14 @@ def test_empty_dataframe_should_ignore_dtype2(library):
 
 
 def test_dataframe_append_should_promote_string_column(library):
-    data = np.zeros((2,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'a10')])
+    data = np.zeros((2,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'S10')])
     data[:] = [(1, 2., 'Hello'), (2, 3., "World")]
     df = DataFrame(data, index=DatetimeIndex(np.array([dt(2013, 1, 1),
                                                        dt(2013, 1, 2)]).astype('datetime64[ns]'), name='DATETIME'))
-    data2 = np.zeros((1,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'a30')])
+    data2 = np.zeros((1,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'S30')])
     data2[:] = [(3, 4., 'Hello World - Good Morning')]
     df2 = DataFrame(data2, index=DatetimeIndex(np.array([dt(2013, 1, 3)]).astype('datetime64[ns]'), name='DATETIME'))
-    expected_data = np.zeros((3,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'a30')])
+    expected_data = np.zeros((3,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'S30')])
     expected_data[:] = [(1, 2., 'Hello'), (2, 3., "World"), (3, 4., 'Hello World - Good Morning')]
     expected = DataFrame(expected_data, index=DatetimeIndex(np.array([dt(2013, 1, 1),
                                                                        dt(2013, 1, 2),
@@ -427,14 +422,14 @@ def test_dataframe_append_should_promote_string_column(library):
 
 
 def test_dataframe_append_should_add_new_column(library):
-    data = np.zeros((2,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'a10')])
+    data = np.zeros((2,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'S10')])
     data[:] = [(1, 2., 'Hello'), (2, 3., "World")]
     df = DataFrame(data, index=DatetimeIndex(np.array([dt(2013, 1, 1),
                                                        dt(2013, 1, 2)]).astype('datetime64[ns]'), name='DATETIME'))
-    data2 = np.zeros((1,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'a10'), ('D', 'f4')])
+    data2 = np.zeros((1,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'S10'), ('D', 'f4')])
     data2[:] = [(4, 5., 'Hi', 6.)]
     df2 = DataFrame(data2, index=DatetimeIndex(np.array([dt(2013, 1, 3)]).astype('datetime64[ns]'), name='DATETIME'))
-    expected_data = np.zeros((3,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'a10'), ('D', 'f4')])
+    expected_data = np.zeros((3,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'S10'), ('D', 'f4')])
     expected_data[:] = [(1, 2., 'Hello', np.nan), (2, 3., "World", np.nan), (4, 5., 'Hi', 6.)]
     expected = DataFrame(expected_data, index=DatetimeIndex(np.array([dt(2013, 1, 1),
                                                                        dt(2013, 1, 2),
@@ -448,14 +443,14 @@ def test_dataframe_append_should_add_new_column(library):
 
 
 def test_dataframe_append_should_add_new_columns_and_reorder(library):
-    data = np.zeros((2,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'a10')])
+    data = np.zeros((2,), dtype=[('A', 'i4'), ('B', 'f4'), ('C', 'S10')])
     data[:] = [(1, 2., 'Hello'), (2, 3., "World")]
     df = DataFrame(data, index=DatetimeIndex(np.array([dt(2013, 1, 1),
                                                        dt(2013, 1, 2)]).astype('datetime64[ns]'), name='DATETIME'))
-    data2 = np.zeros((1,), dtype=[('C', 'a10'), ('A', 'i4'), ('E', 'a1'), ('B', 'f4'), ('D', 'f4'), ('F', 'i4')])
+    data2 = np.zeros((1,), dtype=[('C', 'S10'), ('A', 'i4'), ('E', 'S1'), ('B', 'f4'), ('D', 'f4'), ('F', 'i4')])
     data2[:] = [('Hi', 4, 'Y', 5., 6., 7)]
     df2 = DataFrame(data2, index=DatetimeIndex(np.array([dt(2013, 1, 3)]).astype('datetime64[ns]'), name='DATETIME'))
-    expected_data = np.zeros((3,), dtype=[('C', 'a10'), ('A', 'i4'), ('E', 'a1'),
+    expected_data = np.zeros((3,), dtype=[('C', 'S10'), ('A', 'i4'), ('E', 'S1'),
                                           ('B', 'f4'), ('D', 'f4'), ('F', 'i4')])
     expected_data[:] = [('Hello', 1, '', 2., np.nan, 0), ("World", 2, '', 3., np.nan, 0), ('Hi', 4, 'Y', 5., 6., 7)]
     expected = DataFrame(expected_data, index=DatetimeIndex(np.array([dt(2013, 1, 1),
@@ -643,44 +638,6 @@ def test_can_write_pandas_df_with_object_columns(library):
     assert_frame_equal(saved_df, expected)
 
 
-def panel(i1, i2, i3):
-    return Panel(np.random.randn(i1, i2, i3), range(i1), ['A%d' % i for i in range(i2)],
-                 list(rrule(DAILY, count=i3, dtstart=dt(1970, 1, 1), interval=1)))
-
-
-@pytest.mark.skipif(pd.__version__ >= '0.25.0', reason="Panel has been removed")
-@pytest.mark.xfail(pd.__version__ >= '0.18.0', reason="see issue #115")
-@pytest.mark.parametrize("df_size", list(itertools.combinations_with_replacement([1, 2, 4], r=3)))
-def test_panel_save_read(library, df_size):
-    '''Note - empties are not tested here as they don't work!'''
-    pn = panel(*df_size)
-    library.write('pandas', pn)
-    result = library.read('pandas').data
-    assert np.all(pn.values == result.values), str(pn.values) + "!=" + str(result.values)
-    for i in range(3):
-        assert np.all(pn.axes[i] == result.axes[i])
-        if None not in pn.axes[i].names:
-            assert np.all(pn.axes[i].names == result.axes[i].names), \
-                str(pn.axes[i].names) + "!=" + str(pn.axes[i].names)
-
-
-@pytest.mark.skipif(pd.__version__ >= '0.25.0', reason="Panel has been removed")
-@pytest.mark.xfail(pd.__version__ >= '0.20.0', reason='Panel is deprecated')
-def test_panel_save_read_with_nans(library):
-    '''Ensure that nan rows are not dropped when calling to_frame.'''
-    df1 = DataFrame(data=np.arange(4).reshape((2, 2)), index=['r1', 'r2'], columns=['c1', 'c2'])
-    df2 = DataFrame(data=np.arange(6).reshape((3, 2)), index=['r1', 'r2', 'r3'], columns=['c1', 'c2'])
-    p_in = Panel(data=dict(i1=df1, i2=df2))
-
-    library.write('pandas', p_in)
-    p_out = library.read('pandas').data
-
-    assert p_in.shape == p_out.shape
-    # check_names is False because pandas helpfully names the axes for us.
-    assert_frame_equal(p_in.iloc[0], p_out.iloc[0], check_names=False)
-    assert_frame_equal(p_in.iloc[1], p_out.iloc[1], check_names=False)
-
-
 def test_save_read_ints(library):
     ts1 = DataFrame(index=[dt(2012, 1, 1) + dtd(hours=x) for x in range(5)],
                     data={'col1': np.arange(5), 'col2': np.arange(5)})
@@ -730,7 +687,6 @@ def test_no_labels(library):
     assert_frame_equal(ts1, ts2)
 
 
-@pytest.mark.xfail(reason='needs investigating')
 def test_no_index_labels(library):
     ts1 = DataFrame(index=[dt(2012, 1, 1), dt(2012, 1, 2)],
                     data={'data': [1., 2.]})
@@ -749,7 +705,7 @@ def test_not_unique(library):
 
 
 def test_daterange_end(library):
-    df = DataFrame(index=date_range(dt(2001, 1, 1), freq='S', periods=30 * 1024),
+    df = DataFrame(index=date_range(dt(2001, 1, 1), freq='s', periods=30 * 1024),
                    data=np.tile(np.arange(30 * 1024), 100).reshape((-1, 100)))
     df.columns = [str(c) for c in df.columns]
     library.write('MYARR', df)
@@ -764,7 +720,7 @@ def test_daterange_end(library):
 
 
 def test_daterange_start(library):
-    df = DataFrame(index=date_range(dt(2001, 1, 1), freq='S', periods=30 * 1024),
+    df = DataFrame(index=date_range(dt(2001, 1, 1), freq='s', periods=30 * 1024),
                    data=np.tile(np.arange(30 * 1024), 100).reshape((-1, 100)))
     df.columns = [str(c) for c in df.columns]
     library.write('MYARR', df)
@@ -786,7 +742,7 @@ def test_daterange_with_zero_index(library):
     # the segment count is different to the number of rows that will be returned
     row_count = 1
     # a signle element date range gives a first element index of 0
-    df = DataFrame(index=date_range(dt(2001, 1, 1), freq='S', periods=row_count),
+    df = DataFrame(index=date_range(dt(2001, 1, 1), freq='s', periods=row_count),
                    data=np.tile(np.arange(row_count), 100).reshape((-1, 100)))
     df.columns = [str(c) for c in df.columns]
     library.write('MYARR', df)
@@ -798,7 +754,7 @@ def test_daterange_with_zero_index(library):
 
 
 def test_daterange_large_DataFrame(library):
-    df = DataFrame(index=date_range(dt(2001, 1, 1), freq='S', periods=30 * 1024),
+    df = DataFrame(index=date_range(dt(2001, 1, 1), freq='s', periods=30 * 1024),
                    data=np.tile(np.arange(30 * 1024), 100).reshape((-1, 100)))
     df.columns = [str(c) for c in df.columns]
     library.write('MYARR', df)
@@ -832,7 +788,7 @@ def test_daterange_large_DataFrame(library):
 
 
 def test_daterange_large_DataFrame_middle(library):
-    df = DataFrame(index=date_range(dt(2001, 1, 1), freq='S', periods=30 * 1024),
+    df = DataFrame(index=date_range(dt(2001, 1, 1), freq='s', periods=30 * 1024),
                    data=np.tile(np.arange(30 * 1024), 100).reshape((-1, 100)))
     df.columns = [str(c) for c in df.columns]
     library.write('MYARR', df)
@@ -880,7 +836,7 @@ def test_daterange(library, df, assert_equal):
 
 
 def test_daterange_append(library):
-    df = DataFrame(index=date_range(dt(2001, 1, 1), freq='S', periods=30 * 1024),
+    df = DataFrame(index=date_range(dt(2001, 1, 1), freq='s', periods=30 * 1024),
                    data=np.tile(np.arange(30 * 1024), 100).reshape((-1, 100)))
     df.columns = [str(c) for c in df.columns]
     df.index.name = 'idx'
@@ -914,44 +870,44 @@ def assert_range_slice(library, expected, date_range, **kwargs):
 
 
 def test_daterange_single_chunk(library):
-    df = read_csv(StringIO("""2015-08-10 00:00:00,200005,1.0
-                              2015-08-10 00:00:00,200012,2.0
-                              2015-08-10 00:00:00,200016,3.0
-                              2015-08-11 00:00:00,200005,1.0
-                              2015-08-11 00:00:00,200012,2,0
-                              2015-08-11 00:00:00,200016,3.0"""), parse_dates=[0],
+    df = read_csv(StringIO("2015-08-10 00:00:00,200005,1.0\n"
+                           "2015-08-10 00:00:00,200012,2.0\n"
+                           "2015-08-10 00:00:00,200016,3.0\n"
+                           "2015-08-11 00:00:00,200005,1.0\n"
+                           "2015-08-11 00:00:00,200012,2.0\n"
+                           "2015-08-11 00:00:00,200016,3.0"), parse_dates=[0],
                   names=['date', 'security_id', 'value']).set_index(['date', 'security_id'])
     library.write('MYARR', df)
     assert_range_slice(library, df[dt(2015, 8, 11):], DateRange(dt(2015, 8, 11), dt(2015, 8, 11)))
 
 
 def test_daterange_when_end_beyond_chunk_index(library):
-    df = read_csv(StringIO("""2015-08-10 00:00:00,200005,1.0
-                              2015-08-10 00:00:00,200012,2.0
-                              2015-08-10 00:00:00,200016,3.0
-                              2015-08-11 00:00:00,200005,1.0
-                              2015-08-11 00:00:00,200012,2,0
-                              2015-08-11 00:00:00,200016,3.0"""), parse_dates=[0],
+    df = read_csv(StringIO("2015-08-10 00:00:00,200005,1.0\n"
+                           "2015-08-10 00:00:00,200012,2.0\n"
+                           "2015-08-10 00:00:00,200016,3.0\n"
+                           "2015-08-11 00:00:00,200005,1.0\n"
+                           "2015-08-11 00:00:00,200012,2.0\n"
+                           "2015-08-11 00:00:00,200016,3.0"), parse_dates=[0],
                   names=['date', 'security_id', 'value']).set_index(['date', 'security_id'])
     library.write('MYARR', df)
     assert_range_slice(library, df[dt(2015, 8, 11):], DateRange(dt(2015, 8, 11), dt(2015, 8, 12)))
 
 
 def test_daterange_when_end_beyond_chunk_index_no_start(library):
-    df = read_csv(StringIO("""2015-08-10 00:00:00,200005,1.0
-                              2015-08-10 00:00:00,200012,2.0
-                              2015-08-10 00:00:00,200016,3.0
-                              2015-08-11 00:00:00,200005,1.0
-                              2015-08-11 00:00:00,200012,2,0
-                              2015-08-11 00:00:00,200016,3.0"""), parse_dates=[0],
+    df = read_csv(StringIO("2015-08-10 00:00:00,200005,1.0\n"
+                           "2015-08-10 00:00:00,200012,2.0\n"
+                           "2015-08-10 00:00:00,200016,3.0\n"
+                           "2015-08-11 00:00:00,200005,1.0\n"
+                           "2015-08-11 00:00:00,200012,2.0\n"
+                           "2015-08-11 00:00:00,200016,3.0"), parse_dates=[0],
                   names=['date', 'security_id', 'value']).set_index(['date', 'security_id'])
     library.write('MYARR', df)
     assert_range_slice(library, df, DateRange(end=dt(2015, 8, 12)))
 
 
 def test_daterange_fails_with_timezone_start(library):
-    df = read_csv(StringIO("""2015-08-10 00:00:00,200005,1.0
-                              2015-08-11 00:00:00,200016,3.0"""), parse_dates=[0],
+    df = read_csv(StringIO("2015-08-10 00:00:00,200005,1.0\n"
+                           "2015-08-11 00:00:00,200016,3.0"), parse_dates=[0],
                   names=['date', 'security_id', 'value']).set_index(['date', 'security_id'])
     library.write('MYARR', df)
     with pytest.raises(ValueError):
@@ -1025,140 +981,20 @@ def test_mutable_df(library):
     s.__array__().setflags(write=True)
     library.write('pandas', s)
     read_s = library.read('pandas')
-    assert read_s.data.__array__().flags['WRITEABLE']
+    read_s.data.iloc[0, 0] = 42
+    assert read_s.data.iloc[0, 0] == 42
 
 
-@pytest.mark.skip(reason="Skip for Python3")
-def test_forced_encodings_with_df_mixed_types(library):
-    sample_data = {'str_col': ['a', 'b'], u'unicode_col': [u'a', u'b'], 'int_col': [1, 2]}
-    # This is for testing py2 bytes vs unicode serialization issues. Ignoring Py3 for now.
-    # ===================BEFORE===================
-    df = pd.DataFrame(sample_data, index=['str_type', u'uni_type'])
-    assert type(df['str_col'][0]) == bytes
-    assert type(df['unicode_col'][0]) == unicode
-    # Check that all column names are stored as as is by pandas
-    for col in df.columns:
-        if bytes(col) == 'unicode_col':
-            assert type(col) == unicode
-        else:
-            assert type(col) == bytes
-    # Check index types are preserved.
-    for index_val in df.index:
-        if bytes(index_val) == 'uni_type':
-            assert type(index_val) == unicode
-        else:
-            assert type(index_val) == bytes
-
-    library.write('dummy', df)
-    library.write('dummy_str_col', df['str_col'])
-    library.write('dummy_unicode_col', df[u'unicode_col'])
-
-    # ===================READ BACK WITHOUT FORCED ENCODING===================
-    df_normal = library.read('dummy').data
-    s_str_normal = library.read('dummy_str_col').data
-    s_unicode_normal = library.read('dummy_unicode_col').data
-
-    assert type(df_normal['str_col'][0]) == bytes
-    assert type(df_normal['unicode_col'][0]) == unicode
-    assert type(s_str_normal.values[0]) == bytes
-    assert type(s_unicode_normal.values[0]) == unicode
-
-    # Arctic currently converts all series names to bytes
-    assert type(s_str_normal.name) == bytes
-    assert type(s_unicode_normal.name) == bytes
-    # Arctic currently converts all column and index string type names to unicode
-    assert all([type(x) == unicode for x in df_normal.columns])
-
-    assert all([type(x) == unicode for x in df_normal.index])
-    assert all([type(x) == unicode for x in s_str_normal.index])
-    assert all([type(x) == unicode for x in s_unicode_normal.index])
-
-    # ===================READ BACK WITH FORCED ENCODING===================
-    df_forced_unicode = library.read('dummy', force_bytes_to_unicode=True).data
-    s_str_forced = library.read('dummy_str_col', force_bytes_to_unicode=True).data
-    s_unicode_forced = library.read('dummy_unicode_col', force_bytes_to_unicode=True).data
-
-    assert type(df_forced_unicode['str_col'][0]) == unicode
-    assert type(df_forced_unicode['unicode_col'][0]) == unicode
-    assert type(s_str_forced.values[0]) == unicode
-    assert type(s_unicode_forced.values[0]) == unicode
-
-    # Arctic currently converts all column and index string type names to unicode
-    assert type(s_str_forced.name) == unicode
-    assert type(s_unicode_forced.name) == unicode
-    assert all([type(x) == unicode for x in df_forced_unicode.columns])
-
-    assert all([type(x) == unicode for x in df_forced_unicode.index])
-    assert all([type(x) == unicode for x in s_str_forced.index])
-    assert all([type(x) == unicode for x in df_forced_unicode.index])
-
-
-@pytest.mark.skip(reason="Skip for Python3")
-def test_forced_encodings_with_df(library):
-    sample_data = {'str_col': ['a', 'b'], 'unicode_col': [u'a', u'b'], 'int_col': [1, 2]}
-    # This is for testing py2 bytes vs unicode serialization issues. Ignoring Py3 for now.
-    # ===================BEFORE===================
-    df = pd.DataFrame(sample_data, index=['str_type', 'uni_type'])
-    assert type(df['str_col'][0]) == bytes
-    assert type(df['unicode_col'][0]) == unicode
-    # Check that all column names are stored as as is by pandas
-    assert all([type(x) == bytes for x in df.columns])
-    assert all([type(x) == bytes for x in df.index])
-
-    library.write('dummy', df)
-    library.write('dummy_str_col', df['str_col'])
-    library.write('dummy_unicode_col', df['unicode_col'])
-
-    # ===================READ BACK WITHOUT FORCED ENCODING===================
-    df_normal = library.read('dummy').data
-    s_str_normal = library.read('dummy_str_col').data
-    s_unicode_normal = library.read('dummy_unicode_col').data
-
-    assert type(df_normal['str_col'][0]) == bytes
-    assert type(df_normal['unicode_col'][0]) == unicode
-    assert type(s_str_normal.values[0]) == bytes
-    assert type(s_unicode_normal.values[0]) == unicode
-
-    # Arctic currently converts all series names to bytes
-    assert type(s_str_normal.name) == bytes
-    assert type(s_unicode_normal.name) == bytes
-    # Arctic currently converts all column to unicode and will keep index type as is
-    assert all([type(x) == unicode for x in df_normal.columns])
-
-    assert all([type(x) == bytes for x in df_normal.index])
-    assert all([type(x) == bytes for x in s_str_normal.index])
-    assert all([type(x) == bytes for x in s_unicode_normal.index])
-
-    # ===================READ BACK WITH FORCED ENCODING===================
-    df_forced_unicode = library.read('dummy', force_bytes_to_unicode=True).data
-    s_str_forced = library.read('dummy_str_col', force_bytes_to_unicode=True).data
-    s_unicode_forced = library.read('dummy_unicode_col', force_bytes_to_unicode=True).data
-
-    # Should force everything to be unicode now.
-    assert type(df_forced_unicode['str_col'][0]) == unicode
-    assert type(df_forced_unicode['unicode_col'][0]) == unicode
-    assert type(s_str_forced.values[0]) == unicode
-    assert type(s_unicode_forced.values[0]) == unicode
-
-    assert type(s_str_forced.name) == unicode
-    assert type(s_unicode_forced.name) == unicode
-    assert all([type(x) == unicode for x in df_forced_unicode.columns])
-
-    assert all([type(x) == unicode for x in df_forced_unicode.index])
-    assert all([type(x) == unicode for x in s_unicode_forced.index])
-    assert all([type(x) == unicode for x in s_str_forced.index])
-
-
-def test_forced_encodings_with_df_py3(library):
+def test_forced_encodings_with_df_bytes(library):
     sample_data = {'str_col': [b'a', b'b'], 'unicode_col': [u'a', u'b'], 'int_col': [1, 2]}
-    unicode_type = str
+    text_type = str
 
     # ===================BEFORE===================
     df = pd.DataFrame(sample_data, index=[b'str_type', b'uni_type'])
-    assert type(df['str_col'][0]) == bytes
-    assert type(df['unicode_col'][0]) == unicode_type
+    assert type(df['str_col'].iloc[0]) == bytes
+    assert type(df['unicode_col'].iloc[0]) == text_type
     # Check that all column names are stored as as is by pandas
-    assert all([type(x) == unicode_type for x in df.columns])
+    assert all([type(x) == text_type for x in df.columns])
     assert all([type(x) == bytes for x in df.index])
 
     library.write('dummy', df)
@@ -1170,15 +1006,15 @@ def test_forced_encodings_with_df_py3(library):
     s_str_normal = library.read('dummy_str_col').data
     s_unicode_normal = library.read('dummy_unicode_col').data
 
-    assert type(df_normal['str_col'][0]) == bytes
-    assert type(df_normal['unicode_col'][0]) == unicode_type
+    assert type(df_normal['str_col'].iloc[0]) == bytes
+    assert type(df_normal['unicode_col'].iloc[0]) == text_type
     assert isinstance(s_str_normal.values[0], bytes)
-    assert type(s_unicode_normal.values[0]) == unicode_type
+    assert type(s_unicode_normal.values[0]) == text_type
 
-    # Arctic currently converts all column to unicode_type and will keep index type as is
-    assert type(s_str_normal.name) == unicode_type
-    assert type(s_unicode_normal.name) == unicode_type
-    assert all([type(x) == unicode_type for x in df_normal.columns])
+    # Arctic currently converts all column to text_type and will keep index type as is
+    assert type(s_str_normal.name) == text_type
+    assert type(s_unicode_normal.name) == text_type
+    assert all([type(x) == text_type for x in df_normal.columns])
 
     assert all([type(x) == bytes for x in df_normal.index])
     assert all([type(x) == bytes for x in s_str_normal.index])
@@ -1189,24 +1025,24 @@ def test_forced_encodings_with_df_py3(library):
     s_str_forced = library.read('dummy_str_col', force_bytes_to_unicode=True).data
     s_unicode_forced = library.read('dummy_unicode_col', force_bytes_to_unicode=True).data
 
-    assert type(df_forced_unicode['str_col'][0]) == unicode_type
-    assert type(df_forced_unicode['unicode_col'][0]) == unicode_type
-    assert type(s_str_forced.values[0]) == unicode_type
-    assert type(s_unicode_forced.values[0]) == unicode_type
+    assert type(df_forced_unicode['str_col'].iloc[0]) == text_type
+    assert type(df_forced_unicode['unicode_col'].iloc[0]) == text_type
+    assert type(s_str_forced.values[0]) == text_type
+    assert type(s_unicode_forced.values[0]) == text_type
 
-    # Should force everything to be unicode_type now.
-    assert type(s_str_forced.name) == unicode_type
-    assert type(s_unicode_forced.name) == unicode_type
-    assert all([type(x) == unicode_type for x in df_forced_unicode.columns])
+    # Should force everything to text_type now.
+    assert type(s_str_forced.name) == text_type
+    assert type(s_unicode_forced.name) == text_type
+    assert all([type(x) == text_type for x in df_forced_unicode.columns])
 
-    assert all([type(x) == unicode_type for x in df_forced_unicode.index])
-    assert all([type(x) == unicode_type for x in s_str_forced.index])
-    assert all([type(x) == unicode_type for x in s_unicode_forced.index])
+    assert all([type(x) == text_type for x in df_forced_unicode.index])
+    assert all([type(x) == text_type for x in s_str_forced.index])
+    assert all([type(x) == text_type for x in s_unicode_forced.index])
 
 
-def test_forced_encodings_with_df_py3_multi_index(library):
+def test_forced_encodings_with_df_bytes_multi_index(library):
     sample_data = {'str_col': [b'a', b'b'], 'unicode_col': [u'a', u'b'], 'int_col': [1, 2]}
-    unicode_type = str
+    text_type = str
 
     def _assert_index_type(index, t_type):
         assert all([
@@ -1217,10 +1053,10 @@ def test_forced_encodings_with_df_py3_multi_index(library):
     # ===================BEFORE===================
     multi_index_df = pd.DataFrame(sample_data,
                                   index=pd.MultiIndex.from_tuples([(b'ele1', b'uni_type1'), (b'ele2', b'uni_type2')]))
-    assert type(multi_index_df['str_col'][0]) == bytes
-    assert type(multi_index_df['unicode_col'][0]) == unicode_type
+    assert type(multi_index_df['str_col'].iloc[0]) == bytes
+    assert type(multi_index_df['unicode_col'].iloc[0]) == text_type
     # Check that all column names are stored as as is by pandas
-    assert all([type(x) == unicode_type for x in multi_index_df.columns])
+    assert all([type(x) == text_type for x in multi_index_df.columns])
     assert all([
         type(multi_index_df.index.get_level_values(level)[0]) == bytes
         for level in range(len(multi_index_df.index.levels))
@@ -1235,15 +1071,15 @@ def test_forced_encodings_with_df_py3_multi_index(library):
     s_str_col = library.read('dummy_str_col').data
     s_unicode_col = library.read('dummy_unicode_col').data
 
-    assert type(df_normal['str_col'][0]) == bytes
-    assert type(df_normal['unicode_col'][0]) == unicode_type
+    assert type(df_normal['str_col'].iloc[0]) == bytes
+    assert type(df_normal['unicode_col'].iloc[0]) == text_type
     assert isinstance(s_str_col.values[0], bytes)
-    assert type(s_unicode_col.values[0]) == unicode_type
+    assert type(s_unicode_col.values[0]) == text_type
 
-    # Arctic currently converts all column to unicode_type and will keep index type as is
-    assert type(s_str_col.name) == unicode_type
-    assert type(s_unicode_col.name) == unicode_type
-    assert all([type(x) == unicode_type for x in df_normal.columns])
+    # Arctic currently converts all column to text_type and will keep index type as is
+    assert type(s_str_col.name) == text_type
+    assert type(s_unicode_col.name) == text_type
+    assert all([type(x) == text_type for x in df_normal.columns])
 
     _assert_index_type(df_normal.index, bytes)
     _assert_index_type(s_str_col.index, bytes)
@@ -1254,16 +1090,16 @@ def test_forced_encodings_with_df_py3_multi_index(library):
     s_str_forced = library.read('dummy_str_col', force_bytes_to_unicode=True).data
     s_unicode_forced = library.read('dummy_unicode_col', force_bytes_to_unicode=True).data
 
-    assert type(df_forced_unicode['str_col'][0]) == unicode_type
-    assert type(df_forced_unicode['unicode_col'][0]) == unicode_type
-    assert type(s_str_forced.values[0]) == unicode_type
-    assert type(s_unicode_forced.values[0]) == unicode_type
+    assert type(df_forced_unicode['str_col'].iloc[0]) == text_type
+    assert type(df_forced_unicode['unicode_col'].iloc[0]) == text_type
+    assert type(s_str_forced.values[0]) == text_type
+    assert type(s_unicode_forced.values[0]) == text_type
 
-    # Should force everything to be unicode_type now.
-    assert all([type(x) == unicode_type for x in df_forced_unicode.columns])
-    assert type(s_str_forced.name) == unicode_type
-    assert type(s_unicode_forced.name) == unicode_type
+    # Should force everything to text_type now.
+    assert all([type(x) == text_type for x in df_forced_unicode.columns])
+    assert type(s_str_forced.name) == text_type
+    assert type(s_unicode_forced.name) == text_type
 
-    _assert_index_type(df_forced_unicode.index, unicode_type)
-    _assert_index_type(s_str_forced.index, unicode_type)
-    _assert_index_type(s_unicode_forced.index, unicode_type)
+    _assert_index_type(df_forced_unicode.index, text_type)
+    _assert_index_type(s_str_forced.index, text_type)
+    _assert_index_type(s_unicode_forced.index, text_type)

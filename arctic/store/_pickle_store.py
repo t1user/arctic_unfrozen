@@ -1,6 +1,8 @@
 import io
 import logging
+from collections.abc import Iterable, MutableMapping
 from operator import itemgetter
+from typing import Any, Protocol, cast
 
 import bson
 from bson.binary import Binary
@@ -20,21 +22,35 @@ _CHUNK_SIZE = 15 * 1024 * 1024  # 15MB
 _HARD_MAX_BSON_ENCODE = 10 * 1024 * 1024  # 10MB
 
 logger = logging.getLogger(__name__)
+_MAX_BSON_ENCODE = cast(int, MAX_BSON_ENCODE)
+
+
+class _PickleCollection(Protocol):
+    def find(self, *args: Any, **kwargs: Any) -> Iterable[dict[str, Any]]:
+        ...
+
+    def update_one(self, *args: Any, **kwargs: Any) -> Any:
+        ...
+
+
+class _ArcticLibrary(Protocol):
+    def get_top_level_collection(self) -> _PickleCollection:
+        ...
 
 
 class PickleStore(object):
 
     @classmethod
-    def initialize_library(cls, *args, **kwargs):
+    def initialize_library(cls, *_args: Any, **_kwargs: Any) -> None:
         pass
 
-    def get_info(self, _version):
+    def get_info(self, _version: object) -> dict[str, str]:
         return {
             'type': 'blob',
             'handler': self.__class__.__name__,
         }
 
-    def read(self, mongoose_lib, version, symbol, **kwargs):
+    def read(self, mongoose_lib: _ArcticLibrary, version: MutableMapping[str, Any], symbol: Any, **_kwargs: Any) -> Any:
         blob = version.get("blob")
         if blob is not None:
             if blob == _MAGIC_CHUNKEDV2:
@@ -57,22 +73,21 @@ class PickleStore(object):
                 except:
                     logger.error("Failed to read symbol %s" % symbol)
 
-            try:
-                # The default encoding is ascii.
-                return pickle_compat_load(io.BytesIO(data))
-            except UnicodeDecodeError as ue:
-                # Using encoding='latin1' is required for unpickling NumPy arrays and instances of datetime, date
-                # and time pickled by Python 2: https://docs.python.org/3/library/pickle.html#pickle.load
-                logger.info("Could not Unpickle with ascii, Using latin1.")
-                encoding = kwargs.get('encoding', 'latin_1')  # Check if someone has manually specified encoding.
-                return pickle_compat_load(io.BytesIO(data), encoding=encoding)
+            return pickle_compat_load(io.BytesIO(data))
         return version['data']
 
     @staticmethod
-    def read_options():
+    def read_options() -> list[str]:
         return []
 
-    def write(self, arctic_lib, version, symbol, item, _previous_version):
+    def write(
+        self,
+        arctic_lib: _ArcticLibrary,
+        version: MutableMapping[str, Any],
+        symbol: Any,
+        item: Any,
+        _previous_version: object,
+    ) -> None:
         # Currently we try to bson encode if the data is less than a given size and store it in
         # the version collection, but pickling might be preferable if we have characters that don't
         # play well with the bson encoder or if you always want your data in the data collection.
@@ -80,7 +95,7 @@ class PickleStore(object):
             try:
                 # If it's encodeable, then ship it
                 b = bson.BSON.encode({'data': item})
-                if len(b) < min(MAX_BSON_ENCODE, _HARD_MAX_BSON_ENCODE):
+                if len(b) < min(_MAX_BSON_ENCODE, _HARD_MAX_BSON_ENCODE):
                     version['data'] = item
                     return
             except InvalidDocument:
@@ -90,11 +105,7 @@ class PickleStore(object):
         collection = arctic_lib.get_top_level_collection()
         # Try to pickle it. This is best effort
         version['blob'] = _MAGIC_CHUNKEDV2
-        # Python 3.8 onwards uses protocol 5 which cannot be unpickled in Python versions below that, so limiting
-        # it to use a maximum of protocol 4 in Python which is understood by 3.4 onwards and is still fairly efficient.
-        # pickle version 4 is introduced with  python 3.4 and default with 3.8 onward
-        pickle_protocol = min(pickle.HIGHEST_PROTOCOL, 4)
-        pickled = pickle.dumps(item, protocol=pickle_protocol)
+        pickled = pickle.dumps(item, protocol=pickle.HIGHEST_PROTOCOL)
 
         data = compress_array([pickled[i * _CHUNK_SIZE: (i + 1) * _CHUNK_SIZE] for i in range(int(len(pickled) / _CHUNK_SIZE + 1))])
 

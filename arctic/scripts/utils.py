@@ -1,13 +1,12 @@
-from __future__ import absolute_import
-
 import logging
+from typing import Any
 
 from ..auth import get_auth, authenticate
 
 logger = logging.getLogger(__name__)
 
 
-def do_db_auth(host, connection, db_name):
+def do_db_auth(host: str, connection: Any, db_name: str | None) -> bool:
     """
     Attempts to authenticate against the mongo instance.
 
@@ -34,12 +33,14 @@ def do_db_auth(host, connection, db_name):
     elif not authenticate(connection.admin, admin_creds.user, admin_creds.password):
         logger.error("Failed to authenticate to '%s' as Admin. Giving up." % (host))
         return False
-    # Ensure we attempt to auth against the user DB, for non-priviledged users to get access
-    authenticate(connection[db_name], user_creds.user, user_creds.password)
+    # Ensure we attempt to auth against the user DB when credentials exist;
+    # non-privileged admin users may not have access to the target DB.
+    if user_creds is not None:
+        authenticate(connection[db_name], user_creds.user, user_creds.password)
     return True
 
 
-def setup_logging():
+def setup_logging() -> None:
     """ Logging setup for console scripts
     """
     logging.basicConfig(format='%(asctime)s %(message)s', level='INFO')

@@ -1,51 +1,8 @@
 import numpy as np
-import pandas as pd
-import pytest
-from mock import Mock, sentinel, patch
-from pytest import raises
 
 # Do not remove PandasStore
-from arctic.store._pandas_ndarray_store import PandasDataFrameStore, PandasPanelStore, PandasStore
+from arctic.store._pandas_ndarray_store import PandasDataFrameStore, PandasStore
 from tests.util import read_str_as_pandas
-
-
-@pytest.mark.skipif(pd.__version__ >= '0.25.0', reason="Panel has been removed")
-def test_panel_converted_to_dataframe_and_stacked_to_write():
-    store = PandasPanelStore()
-    panel = Mock(shape=(1, 2, 3), axes=[Mock(names=['n%d' % i]) for i in range(3)])
-    panel.to_frame.return_value.dtypes = [sentinel.dtype]
-    with patch.object(PandasDataFrameStore, 'write') as mock_write:
-        with patch('arctic.store._pandas_ndarray_store.DataFrame') as DF:
-            store.write(sentinel.mlib, sentinel.version, sentinel.symbol, panel, sentinel.prev)
-    panel.to_frame.assert_called_with(filter_observations=False)
-    DF.assert_called_with(panel.to_frame.return_value.stack.return_value)
-    mock_write.assert_called_with(sentinel.mlib, sentinel.version, sentinel.symbol,
-                                  DF.return_value, sentinel.prev)
-
-
-@pytest.mark.skipif(pd.__version__ >= '0.25.0', reason="Panel has been removed")
-def test_panel_append_not_supported():
-    store = PandasPanelStore()
-    panel = Mock(shape=(1, 2, 3), axes=[Mock(names=['n%d' % i]) for i in range(3)], dtypes=['a'])
-    with raises(ValueError):
-        store.append(sentinel.mlib, sentinel.version, sentinel.symbol, panel, sentinel.prev)
-
-
-@pytest.mark.skipif(pd.__version__ >= '0.25.0', reason="Panel has been removed")
-def test_panel_converted_from_dataframe_for_reading():
-    store = PandasPanelStore()
-    with patch.object(PandasDataFrameStore, 'read') as mock_read:
-        res = store.read(sentinel.mlib, sentinel.version, sentinel.symbol)
-    mock_read.assert_called_with(sentinel.mlib, sentinel.version, sentinel.symbol)
-    assert res == mock_read.return_value.to_panel.return_value
-
-
-@pytest.mark.skipif(pd.__version__ >= '0.25.0', reason="Panel has been removed")
-def test_raises_upon_empty_panel_write():
-    store = PandasPanelStore()
-    panel = Mock(shape=(1, 0, 3))
-    with raises(ValueError):
-        store.write(sentinel.mlib, sentinel.version, sentinel.symbol, panel, sentinel.prev)
 
 
 def test_read_multi_index_with_no_ts_info():

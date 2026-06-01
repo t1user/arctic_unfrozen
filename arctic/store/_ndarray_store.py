@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from operator import itemgetter
+from typing import Any, cast
 
 import numpy as np
 import pymongo
@@ -23,11 +24,11 @@ _APPEND_SIZE = 1 * 1024 * 1024  # 1MB
 _APPEND_COUNT = 60  # 1 hour of 1 min data
 
 
-def _promote_struct_dtypes(dtype1, dtype2):
+def _promote_struct_dtypes(dtype1: Any, dtype2: Any) -> np.dtype:
     if not set(dtype1.names).issuperset(set(dtype2.names)):
         raise Exception("Removing columns from dtype not handled")
 
-    def _promote(type1, type2):
+    def _promote(type1: Any, type2: Any) -> Any:
         if type2 is None:
             return type1
         if type1.shape is not None:
@@ -38,7 +39,10 @@ def _promote_struct_dtypes(dtype1, dtype2):
     return np.dtype([(n, _promote(dtype1.fields[n][0], dtype2.fields.get(n, (None,))[0])) for n in dtype1.names])
 
 
-def _attempt_update_unchanged(symbol, unchanged_segment_ids, collection, version, previous_version):
+def _attempt_update_unchanged(
+    symbol: str, unchanged_segment_ids: list[dict[str, Any]], collection: Any, version: dict[str, Any],
+    previous_version: dict[str, Any]
+) -> None:
     if not unchanged_segment_ids or not collection or not version:
         return
 
@@ -71,7 +75,7 @@ def _attempt_update_unchanged(symbol, unchanged_segment_ids, collection, version
             symbol, previous_version['version'], result.matched_count, len(unchanged_segment_ids)))
 
 
-def _resize_with_dtype(arr, dtype):
+def _resize_with_dtype(arr: Any, dtype: Any) -> Any:
     """
     This function will transform arr into an array with the same type as dtype. It will do this by
     filling new columns with zeros (or NaNs, if it is a float column). Also, columns that are not
@@ -100,10 +104,18 @@ def _resize_with_dtype(arr, dtype):
             new_arr[c] = arr[c]
 
         # missing float columns should default to nan rather than zero
-        _is_float_type = lambda _dtype: _dtype.type in (np.float32, np.float64)
-        _is_void_float_type = lambda _dtype: _dtype.type == np.void and _is_float_type(_dtype.subdtype[0])
-        _is_float_or_void_float_type = lambda _dtype: _is_float_type(_dtype) or _is_void_float_type(_dtype)
-        _is_float = lambda column: _is_float_or_void_float_type(dtype.fields[column][0])
+        def _is_float_type(_dtype: Any) -> bool:
+            return _dtype.type in (np.float32, np.float64)
+
+        def _is_void_float_type(_dtype: Any) -> bool:
+            return _dtype.type == np.void and _is_float_type(_dtype.subdtype[0])
+
+        def _is_float_or_void_float_type(_dtype: Any) -> bool:
+            return _is_float_type(_dtype) or _is_void_float_type(_dtype)
+
+        def _is_float(column: str) -> bool:
+            return _is_float_or_void_float_type(dtype.fields[column][0])
+
         for new_column in filter(_is_float, new_columns - old_columns):
             new_arr[new_column] = np.nan
 
@@ -112,12 +124,19 @@ def _resize_with_dtype(arr, dtype):
         return arr.astype(dtype)
 
 
-def set_corruption_check_on_append(enable):
+def set_corruption_check_on_append(enable: Any) -> None:
     global CHECK_CORRUPTION_ON_APPEND
     CHECK_CORRUPTION_ON_APPEND = bool(enable)
 
 
-def _update_fw_pointers(collection, symbol, version, previous_version, is_append, shas_to_add=None):
+def _update_fw_pointers(
+    collection: Any,
+    symbol: str,
+    version: dict[str, Any],
+    previous_version: dict[str, Any] | None,
+    is_append: bool,
+    shas_to_add: Any = None,
+) -> None:
     """
     This function will decide whether to update the version document with forward pointers to segments.
     It detects cases where no prior writes/appends have been performed with FW pointers, and extracts the segment IDs.
@@ -128,9 +147,10 @@ def _update_fw_pointers(collection, symbol, version, previous_version, is_append
     if ARCTIC_FORWARD_POINTERS_CFG is FwPointersCfg.DISABLED:
         return
 
-    version_shas = set()
+    version_shas: set[Any] = set()
 
     if is_append:
+        assert previous_version is not None
         # Appends are tricky, as we extract the SHAs from the previous version (assuming it has FW pointers info)
         prev_fw_cfg = get_fwptr_config(previous_version)
         if prev_fw_cfg is FwPointersCfg.DISABLED.name:
@@ -147,21 +167,24 @@ def _update_fw_pointers(collection, symbol, version, previous_version, is_append
 
     # Verify here the number of seen segments vs expected ones
     if len(version_shas) != version['segment_count']:
+        previous_version_id = previous_version['_id'] if previous_version is not None else None
         raise pymongo.errors.OperationFailure("Mismatched number of forward pointers to segments for {}: {} != {})"
                                               "Is append: {}. Previous version: {}. "
                                               "Gathered forward pointers segment shas: {}.".format(
-            symbol, len(version_shas), version['segment_count'], is_append, previous_version['_id'], version_shas))
+            symbol, len(version_shas), version['segment_count'], is_append, previous_version_id, version_shas))
 
     version[FW_POINTERS_REFS_KEY] = list(version_shas)
 
 
-def _spec_fw_pointers_aware(symbol, version, from_index=None, to_index=None):
+def _spec_fw_pointers_aware(
+    symbol: str, version: dict[str, Any], from_index: Any = None, to_index: Any = None
+) -> dict[str, Any]:
     """
     This method updates the find query filter spec used to read the segment for a version.
     It chooses whether to query via forward pointers or not based on the version details and current mode of operation.
     """
-    spec = {'symbol': symbol,
-            'segment': {'$lt': version['up_to'] if to_index is None else to_index}}
+    spec: dict[str, Any] = {'symbol': symbol,
+                            'segment': {'$lt': version['up_to'] if to_index is None else to_index}}
     if from_index is not None:
         spec['segment']['$gte'] = from_index
 
@@ -194,7 +217,7 @@ def _spec_fw_pointers_aware(symbol, version, from_index=None, to_index=None):
         version.get('symbol'), version.get('_id'), version.get('version'), v_fw_config))
 
 
-def _fw_pointers_convert_append_to_write(previous_version):
+def _fw_pointers_convert_append_to_write(previous_version: dict[str, Any]) -> bool:
     """
     This method decides whether to convert an append to a full write  in order to avoid data integrity errors
     """
@@ -272,11 +295,11 @@ class NdarrayStore(object):
     TYPE = 'ndarray'
 
     @classmethod
-    def initialize_library(cls, *args, **kwargs):
+    def initialize_library(cls, *args: Any, **kwargs: Any) -> None:
         pass
 
     @staticmethod
-    def _ensure_index(collection):
+    def _ensure_index(collection: Any) -> None:
         try:
             collection.create_index([('symbol', pymongo.HASHED)], background=True)
             # We keep it only for its uniqueness
@@ -297,27 +320,27 @@ class NdarrayStore(object):
             raise
 
     @mongo_retry
-    def can_delete(self, version, symbol):
+    def can_delete(self, version: dict[str, Any], symbol: str) -> bool:
         return self.can_read(version, symbol)
 
-    def can_read(self, version, symbol):
-        return version['type'] == self.TYPE
+    def can_read(self, version: dict[str, Any], symbol: str) -> bool:
+        return cast(bool, version['type'] == self.TYPE)
 
     @staticmethod
-    def can_write_type(data):
+    def can_write_type(data: Any) -> bool:
         return isinstance(data, np.ndarray)
 
-    def can_write(self, version, symbol, data):
+    def can_write(self, version: Any, symbol: str, data: Any) -> bool:
         return self.can_write_type(data) and not data.dtype.hasobject
 
-    def _dtype(self, string, metadata=None):
+    def _dtype(self, string: str, metadata: Any = None) -> np.dtype:
         if metadata is None:
             metadata = {}
         if string.startswith('['):
-            return np.dtype(eval(string), metadata=metadata)
+            return cast(np.dtype, np.dtype(eval(string), metadata=metadata))
         return np.dtype(string, metadata=metadata)
 
-    def _index_range(self, version, symbol, from_version=None, **kwargs):
+    def _index_range(self, version: Any, symbol: Any, from_version: Any = None, **kwargs: Any) -> Any:
         """
         Tuple describing range to read from the ndarray - closed:open
         """
@@ -326,8 +349,8 @@ class NdarrayStore(object):
             from_index = from_version['up_to']
         return from_index, None
 
-    def get_info(self, version):
-        ret = {}
+    def get_info(self, version: dict[str, Any]) -> dict[str, Any]:
+        ret: dict[str, Any] = {}
         dtype = self._dtype(version['dtype'], version.get('dtype_metadata', {}))
         length = int(version['up_to'])
         ret['size'] = dtype.itemsize * length
@@ -339,17 +362,17 @@ class NdarrayStore(object):
         return ret
 
     @staticmethod
-    def read_options():
+    def read_options() -> list[str]:
         return ['from_version']
 
-    def read(self, arctic_lib, version, symbol, read_preference=None, **kwargs):
+    def read(self, arctic_lib: Any, version: Any, symbol: Any, read_preference: Any = None, **kwargs: Any) -> Any:
         index_range = self._index_range(version, symbol, **kwargs)
         collection = arctic_lib.get_top_level_collection()
         if read_preference:
             collection = collection.with_options(read_preference=read_preference)
         return self._do_read(collection, version, symbol, index_range=index_range)
 
-    def _do_read(self, collection, version, symbol, index_range=None):
+    def _do_read(self, collection: Any, version: dict[str, Any], symbol: str, index_range: Any = None) -> Any:
         """
         index_range is a 2-tuple of integers - a [from, to) range of segments to be read.
             Either from or to can be None, indicating no bound.
@@ -376,9 +399,9 @@ class NdarrayStore(object):
         rtn = np.frombuffer(data, dtype=dtype).reshape(version.get('shape', (-1)))
         return rtn
 
-    def _promote_types(self, dtype, dtype_str):
+    def _promote_types(self, dtype: Any, dtype_str: str) -> np.dtype:
         if dtype_str == str(dtype):
-            return dtype
+            return cast(np.dtype, dtype)
         prev_dtype = self._dtype(dtype_str)
         if dtype.names is None:
             rtn = np.promote_types(dtype, prev_dtype)
@@ -387,7 +410,16 @@ class NdarrayStore(object):
         rtn = np.dtype(rtn, metadata=dict(dtype.metadata or {}))
         return rtn
 
-    def append(self, arctic_lib, version, symbol, item, previous_version, dtype=None, dirty_append=True):
+    def append(
+        self,
+        arctic_lib: Any,
+        version: dict[str, Any],
+        symbol: str,
+        item: Any,
+        previous_version: dict[str, Any],
+        dtype: Any = None,
+        dirty_append: Any = True,
+    ) -> None:
         collection = arctic_lib.get_top_level_collection()
         if previous_version.get('shape', [-1]) != [-1, ] + list(item.shape)[1:]:
             raise UnhandledDtypeException()
@@ -444,7 +476,15 @@ class NdarrayStore(object):
 
             self._do_append(collection, version, symbol, item, previous_version, dirty_append)
 
-    def _do_append(self, collection, version, symbol, item, previous_version, dirty_append):
+    def _do_append(
+        self,
+        collection: Any,
+        version: dict[str, Any],
+        symbol: str,
+        item: Any,
+        previous_version: dict[str, Any],
+        dirty_append: Any,
+    ) -> None:
         data = item.tobytes()
         # Compatibility with Arctic 1.22.0 that didn't write base_sha into the version document
         version['base_sha'] = previous_version.get('base_sha', Binary(b''))
@@ -475,7 +515,7 @@ class NdarrayStore(object):
                             {'$set': segment, '$addToSet': {'parent': version['base_version_id']}},
                             upsert=True)
                     else:
-                        set_spec = {'$set': segment}
+                        set_spec: dict[str, Any] = {'$set': segment}
 
                         if ARCTIC_FORWARD_POINTERS_CFG is FwPointersCfg.HYBRID:
                             set_spec['$addToSet'] = {'parent': version['base_version_id']}
@@ -513,16 +553,18 @@ class NdarrayStore(object):
         else:  # Too much data has been appended now, so rewrite (and compress/chunk).
             self._concat_and_rewrite(collection, version, symbol, item, previous_version)
 
-    def _concat_and_rewrite(self, collection, version, symbol, item, previous_version):
+    def _concat_and_rewrite(
+        self, collection: Any, version: dict[str, Any], symbol: str, item: Any, previous_version: dict[str, Any]
+    ) -> None:
 
         version.pop('base_version_id', None)
 
         # Figure out which is the last 'full' chunk
         spec = _spec_fw_pointers_aware(symbol, previous_version)
 
-        read_index_range = [0, None]
+        read_index_range: list[Any] = [0, None]
         # The unchanged segments are the compressed ones (apart from the last compressed)
-        unchanged_segments = []
+        unchanged_segments: list[dict[str, Any]] = []
         for segment in sorted(collection.find(spec, projection={'_id': 1, 'segment': 1, 'compressed': 1, 'sha': 1}),
                               key=itemgetter('segment')):
             # We want to stop iterating when we find the first uncompressed chunks
@@ -566,7 +608,7 @@ class NdarrayStore(object):
             self.check_written(collection, symbol, version)
 
     @staticmethod
-    def check_written(collection, symbol, version):
+    def check_written(collection: Any, symbol: str, version: dict[str, Any]) -> None:
         # Currently only called from methods which guarantee 'base_version_id' is not populated.
         # Make it nonetheless safe for the general case.
         parent_id = version_base_or_id(version)
@@ -594,12 +636,20 @@ class NdarrayStore(object):
                                                       "Forward pointers segments #: {}.".format(
                     symbol, parent_id, seen_chunks_reverse_pointers, seen_chunks))
 
-    def checksum(self, item):
+    def checksum(self, item: Any) -> Binary:
         sha = hashlib.sha1()
         sha.update(item.tobytes())
         return Binary(sha.digest())
 
-    def write(self, arctic_lib, version, symbol, item, previous_version, dtype=None):
+    def write(
+        self,
+        arctic_lib: Any,
+        version: dict[str, Any],
+        symbol: str,
+        item: Any,
+        previous_version: dict[str, Any] | None,
+        dtype: Any = None,
+    ) -> None:
         collection = arctic_lib.get_top_level_collection()
         if item.dtype.hasobject:
             raise UnhandledDtypeException()
@@ -630,7 +680,15 @@ class NdarrayStore(object):
         version['base_sha'] = version['sha']
         self._do_write(collection, version, symbol, item, previous_version)
 
-    def _do_write(self, collection, version, symbol, item, previous_version, segment_offset=0):
+    def _do_write(
+        self,
+        collection: Any,
+        version: dict[str, Any],
+        symbol: str,
+        item: Any,
+        previous_version: dict[str, Any] | None,
+        segment_offset: int = 0,
+    ) -> None:
 
         row_size = int(item.dtype.itemsize * np.prod(item.shape[1:]))
 
@@ -640,19 +698,20 @@ class NdarrayStore(object):
         # Will fail if row_size is greater than MAX_DOC_SIZE
         rows_per_chunk = int(_CHUNK_SIZE / row_size) + 1
 
-        symbol_all_previous_shas, version_shas = set(), set()
+        symbol_all_previous_shas: set[Binary] = set()
+        version_shas: set[Binary] = set()
         if previous_version:
             symbol_all_previous_shas.update(Binary(x['sha']) for x in
                                             collection.find({'symbol': symbol}, projection={'sha': 1, '_id': 0}))
 
         length = len(item)
 
-        if segment_offset > 0 and 'segment_index' in previous_version:
+        if segment_offset > 0 and previous_version is not None and 'segment_index' in previous_version:
             existing_index = previous_version['segment_index']
         else:
             existing_index = None
 
-        segment_index = []
+        segment_index: list[int] = []
 
         # Compress
         idxs = range(int(np.ceil(float(length) / rows_per_chunk)))
@@ -660,7 +719,7 @@ class NdarrayStore(object):
         compressed_chunks = compress_array(chunks)
 
         # Write
-        bulk = []
+        bulk: list[Any] = []
         for i, chunk in zip(idxs, compressed_chunks):
             segment = {
                 'data': Binary(chunk),
@@ -687,7 +746,7 @@ class NdarrayStore(object):
                 # We also need the uniqueness of the parent field for the (symbol, parent, segment) index,
                 # because upon mongo_retry "dirty_append == True", we compress and only the SHA changes
                 # which raises DuplicateKeyError if we don't have a unique (symbol, parent, segment).
-                set_spec = {'$addToSet': {'parent': version['_id']}}
+                set_spec: dict[str, Any] = {'$addToSet': {'parent': version['_id']}}
 
                 if sha not in symbol_all_previous_shas:
                     segment['sha'] = sha
@@ -719,7 +778,7 @@ class NdarrayStore(object):
 
         self.check_written(collection, symbol, version)
 
-    def _segment_index(self, new_data, existing_index, start, new_segments):
+    def _segment_index(self, new_data: Any, existing_index: Any, start: int, new_segments: Any) -> Any:
         """
         Generate a segment index which can be used in subselect data in _index_range.
         This function must handle both generation of the index and appending to an existing index

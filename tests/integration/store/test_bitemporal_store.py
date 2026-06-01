@@ -4,8 +4,8 @@ Created on 25 Aug 2015
 @author: ateng
 '''
 from datetime import datetime as dt
+from zoneinfo import ZoneInfo
 
-import pytz
 from mock import patch
 from pandas.testing import assert_frame_equal
 
@@ -43,7 +43,7 @@ def test_read_ts_raw(bitemporal_library):
                                                       2012-09-08 17:06:11.040 |  2015-05-01 |  1.0
                                                       2012-10-08 17:06:11.040 |  2015-05-01 |  2.0
                                                       2012-10-09 17:06:11.040 |  2015-05-01 |  2.5
-                                                      2012-11-08 17:06:11.040 |  2015-05-01 |  3.0""", num_index=2).tz_localize(tz=mktz('UTC'), level=1))
+                                                      2012-11-08 17:06:11.040 |  2015-05-01 |  3.0""", num_index=2).tz_localize(tz=mktz('UTC'), level=1), check_index_type=False)
 
 
 def test_write_ts_with_column_name_same_as_observed_dt_ok(bitemporal_library):
@@ -93,7 +93,7 @@ def test_read_ts_with_historical_update(bitemporal_library):
     bitemporal_library.update('spam', read_str_as_pandas("""         sample_dt | near
                                                          2012-10-09 17:06:11.040 | 6.6"""),
                               as_of=dt(2015, 5, 3))
-    assert_frame_equal(bitemporal_library.read('spam', as_of=dt(2015, 5, 2, 10, tzinfo=pytz.timezone("Europe/London"))).data, read_str_as_pandas(
+    assert_frame_equal(bitemporal_library.read('spam', as_of=dt(2015, 5, 2, 10, tzinfo=ZoneInfo("Europe/London"))).data, read_str_as_pandas(
                                                                                     """sample_dt   | near
                                                                            2012-09-08 17:06:11.040 |  1.0
                                                                            2012-10-08 17:06:11.040 |  2.0
@@ -106,7 +106,7 @@ def test_read_ts_with_historical_update(bitemporal_library):
                                                                        2012-10-09 17:06:11.040 |  6.6
                                                                        2012-11-08 17:06:11.040 |  3.0"""))
 
-    assert_frame_equal(bitemporal_library.read('spam', as_of=dt(2015, 5, 1, 10, tzinfo=pytz.timezone("Europe/London"))).data, ts1)
+    assert_frame_equal(bitemporal_library.read('spam', as_of=dt(2015, 5, 1, 10, tzinfo=ZoneInfo("Europe/London"))).data, ts1)
 
 
 def test_read_ts_with_historical_update_and_new_row(bitemporal_library):
@@ -192,7 +192,7 @@ def test_read_ts_raw_all_version_ok(bitemporal_library):
                                                       2012-11-08 17:06:11.040 |  2015-05-01 |  3.0
                                                       2012-11-08 17:06:11.040 |  2015-05-03 |  42
                                                       2012-12-01 17:06:11.040 |  2015-05-05 |  25
-                                                      2013-01-01 17:06:11.040 |  2015-05-10 |  100""", num_index=2))
+                                                      2013-01-01 17:06:11.040 |  2015-05-10 |  100""", num_index=2), check_index_type=False)
 
 
 def test_bitemporal_store_saves_as_of_with_timezone(bitemporal_library):
@@ -243,7 +243,7 @@ def test_multi_index_ts_read_raw(bitemporal_library):
         data_dict={'near': [1.0, 2.0, 2.5, 3.0]}
     )
     bitemporal_library.update('spam', ts, as_of=dt(2015, 1, 1))
-    assert_frame_equal(expected_ts.tz_localize(tz=LOCAL_TZ, level=2), bitemporal_library.read('spam', raw=True).data)
+    assert_frame_equal(expected_ts.tz_localize(tz=LOCAL_TZ, level=2), bitemporal_library.read('spam', raw=True).data, check_index_type=False)
 
 
 def test_multi_index_update(bitemporal_library):

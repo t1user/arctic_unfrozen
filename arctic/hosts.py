@@ -3,6 +3,7 @@ Utilities to resolve a string to Mongo host, or a Arctic library.
 """
 import logging
 import re
+from typing import Any
 from weakref import WeakValueDictionary
 
 
@@ -11,13 +12,13 @@ __all__ = ['get_arctic_lib']
 logger = logging.getLogger(__name__)
 
 # Application environment variables
-arctic_cache = WeakValueDictionary()
+arctic_cache: WeakValueDictionary[Any, Any] = WeakValueDictionary()
 
 
 CONNECTION_STR = re.compile(r"(^\w+\.?\w+)@([^\s:]+:?\w+)$")
 
 
-def get_arctic_lib(connection_string, **kwargs):
+def get_arctic_lib(connection_string: str, **kwargs: Any) -> Any:
     """
     Returns a mongo library for the given connection string
 
@@ -39,7 +40,7 @@ def get_arctic_lib(connection_string, **kwargs):
     return _get_arctic(host, **kwargs)[library]
 
 
-def _get_arctic(instance, **kwargs):
+def _get_arctic(instance: str, **kwargs: Any) -> Any:
     # Consider any kwargs passed to the Arctic as discriminators for the cache
     key = instance, frozenset(kwargs.items())
 

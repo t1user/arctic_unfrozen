@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from pymongo.errors import OperationFailure
 
@@ -25,11 +26,11 @@ class BSONStore(object):
     document insert time.
     """
 
-    def __init__(self, arctic_lib):
+    def __init__(self, arctic_lib: Any) -> None:
         self._arctic_lib = arctic_lib
         self._reset()
 
-    def enable_sharding(self):
+    def enable_sharding(self) -> None:
         logger.info("Trying to enable sharding...")
         arctic_lib = self._arctic_lib
         try:
@@ -38,7 +39,7 @@ class BSONStore(object):
             logger.warning("Could not enable sharding: %s, you probably need admin permissions.", exception)
 
     @classmethod
-    def initialize_library(cls, arctic_lib, hashed=True, **kwargs):
+    def initialize_library(cls, arctic_lib: Any, hashed: bool = True, **kwargs: Any) -> None:
         logger.info("Creating BSONStore without sharding. Use BSONStore.enable_sharding to "
                     "enable sharding for large amounts of data.")
         c = arctic_lib.get_top_level_collection()
@@ -48,12 +49,12 @@ class BSONStore(object):
             logger.warning("Collection %s already exists", c.name)
 
     @mongo_retry
-    def _reset(self):
+    def _reset(self) -> None:
         # The default collection
         self._collection = self._arctic_lib.get_top_level_collection()
 
     @mongo_retry
-    def stats(self):
+    def stats(self) -> dict[str, Any]:
         """
         Store stats, necessary for quota to work.
         """
@@ -66,21 +67,21 @@ class BSONStore(object):
         return res
 
     @mongo_retry
-    def find(self, *args, **kwargs):
+    def find(self, *args: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.find
         """
         return self._collection.find(*args, **kwargs)
 
     @mongo_retry
-    def find_one(self, *args, **kwargs):
+    def find_one(self, *args: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.find_one
         """
         return self._collection.find_one(*args, **kwargs)
 
     @mongo_retry
-    def insert_one(self, document, **kwargs):
+    def insert_one(self, document: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.insert_one
         """
@@ -88,28 +89,28 @@ class BSONStore(object):
         return self._collection.insert_one(document, **kwargs)
 
     @mongo_retry
-    def insert_many(self, documents, **kwargs):
+    def insert_many(self, documents: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.insert_many
         """
         self._arctic_lib.check_quota()
         return self._collection.insert_many(documents, **kwargs)
 
-    def delete_one(self, filter, **kwargs):
+    def delete_one(self, filter: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.delete_one
         """
         return self._collection.delete_one(filter, **kwargs)
 
     @mongo_retry
-    def delete_many(self, filter, **kwargs):
+    def delete_many(self, filter: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.delete_many
         """
         return self._collection.delete_many(filter, **kwargs)
 
     @mongo_retry
-    def update_one(self, filter, update, **kwargs):
+    def update_one(self, filter: Any, update: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.update_one
         """
@@ -117,7 +118,7 @@ class BSONStore(object):
         return self._collection.update_one(filter, update, **kwargs)
 
     @mongo_retry
-    def update_many(self, filter, update, **kwargs):
+    def update_many(self, filter: Any, update: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.update_many
         """
@@ -125,7 +126,7 @@ class BSONStore(object):
         return self._collection.update_many(filter, update, **kwargs)
 
     @mongo_retry
-    def replace_one(self, filter, replacement, **kwargs):
+    def replace_one(self, filter: Any, replacement: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.replace_one
         """
@@ -133,7 +134,7 @@ class BSONStore(object):
         return self._collection.replace_one(filter, replacement, **kwargs)
 
     @mongo_retry
-    def find_one_and_replace(self, filter, replacement, **kwargs):
+    def find_one_and_replace(self, filter: Any, replacement: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.find_one_and_replace
         """
@@ -141,21 +142,21 @@ class BSONStore(object):
         return self._collection.find_one_and_replace(filter, replacement, **kwargs)
 
     @mongo_retry
-    def find_one_and_update(self, filter, update, **kwargs):
+    def find_one_and_update(self, filter: Any, update: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.find_one_and_update
         """
         self._arctic_lib.check_quota()
         return self._collection.find_one_and_update(filter, update, **kwargs)
 
-    def find_one_and_delete(self, filter, **kwargs):
+    def find_one_and_delete(self, filter: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.find_one_and_delete
         """
         return self._collection.find_one_and_delete(filter, **kwargs)
 
     @mongo_retry
-    def bulk_write(self, requests, **kwargs):
+    def bulk_write(self, requests: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.bulk_write
 
@@ -166,42 +167,42 @@ class BSONStore(object):
         return self._collection.bulk_write(requests, **kwargs)
 
     @mongo_retry
-    def count(self, filter, **kwargs):
+    def count(self, filter: Any, **kwargs: Any) -> int:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.count
         """
         return mongo_count(self._collection, filter=filter, **kwargs)
 
     @mongo_retry
-    def aggregate(self, pipeline, **kwargs):
+    def aggregate(self, pipeline: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.aggregate
         """
         return self._collection.aggregate(pipeline, **kwargs)
 
     @mongo_retry
-    def distinct(self, key, **kwargs):
+    def distinct(self, key: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.distinct
         """
         return self._collection.distinct(key, **kwargs)
 
     @mongo_retry
-    def create_index(self, keys, **kwargs):
+    def create_index(self, keys: Any, **kwargs: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.create_index
         """
         return self._collection.create_index(keys, **kwargs)
 
     @mongo_retry
-    def drop_index(self, index_or_name):
+    def drop_index(self, index_or_name: Any) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.drop_index
         """
         return self._collection.drop_index(index_or_name)
 
     @mongo_retry
-    def index_information(self):
+    def index_information(self) -> Any:
         """
         See http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.index_information
         """

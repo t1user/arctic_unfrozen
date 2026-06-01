@@ -1,8 +1,7 @@
-from __future__ import print_function
-
 import copy
 import logging
 from datetime import datetime as dt, timedelta
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -10,12 +9,6 @@ import pymongo
 from bson.binary import Binary
 from pymongo import ReadPreference
 from pymongo.errors import OperationFailure
-
-try:
-    from pandas.core.frame import _arrays_to_mgr
-except ImportError:
-    # Deprecated since pandas 0.23.4
-    from pandas.core.internals.construction import arrays_to_mgr as _arrays_to_mgr
 
 try:
     from pandas.api.types import infer_dtype
@@ -29,13 +22,27 @@ from .._util import indent
 
 try:
     from lz4.block import compress as lz4_compress, decompress as lz4_decompress
-    lz4_compressHC = lambda _str: lz4_compress(_str, mode='high_compression')
+
+    def lz4_compressHC(_str: Any) -> Any:
+        return lz4_compress(_str, mode='high_compression')
 except ImportError as e:
-    from lz4 import compress as lz4_compress, compressHC as lz4_compressHC, decompress as lz4_decompress
+    from lz4 import (  # type: ignore[no-redef]
+        compress as lz4_compress,
+        compressHC as lz4_compressHC,
+        decompress as lz4_decompress,
+    )
 
 
 PD_VER = pd.__version__
 logger = logging.getLogger(__name__)
+
+
+def _expand_date_range_end(date_range: Any) -> Any:
+    end = getattr(date_range, 'end', None)
+    if end and end.time() == dt.min.time():
+        return DateRange(getattr(date_range, 'start', None), end + timedelta(days=1) - timedelta(milliseconds=1),
+                         getattr(date_range, 'interval', CLOSED_CLOSED))
+    return date_range
 
 # Example-Schema:
 # --------------
@@ -99,11 +106,11 @@ CHUNK_VERSION_NUMBER = 3
 class TickStore(object):
 
     @classmethod
-    def initialize_library(cls, arctic_lib, **kwargs):
+    def initialize_library(cls, arctic_lib: Any, **kwargs: Any) -> None:
         TickStore(arctic_lib)._ensure_index()
 
     @mongo_retry
-    def _ensure_index(self):
+    def _ensure_index(self) -> None:
         collection = self._collection
         collection.create_index([(SYMBOL, pymongo.ASCENDING),
                                  (START, pymongo.ASCENDING)], background=True)
@@ -111,7 +118,7 @@ class TickStore(object):
 
         self._metadata.create_index([(SYMBOL, pymongo.ASCENDING)], background=True, unique=True)
 
-    def __init__(self, arctic_lib, chunk_size=100000):
+    def __init__(self, arctic_lib: Any, chunk_size: int = 100000) -> None:
         """
         Parameters
         ----------
@@ -128,25 +135,25 @@ class TickStore(object):
         self._reset()
 
     @mongo_retry
-    def _reset(self):
+    def _reset(self) -> None:
         # The default collections
         self._collection = self._arctic_lib.get_top_level_collection()
         self._metadata = self._collection.metadata
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict[str, Any]:
         return {'arctic_lib': self._arctic_lib}
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict[str, Any]) -> None:
         return TickStore.__init__(self, state['arctic_lib'])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return """<%s at %s>
 %s""" % (self.__class__.__name__, hex(id(self)), indent(str(self._arctic_lib), 4))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def delete(self, symbol, date_range=None):
+    def delete(self, symbol: str, date_range: Any = None) -> Any:
         """
         Delete all chunks for a symbol.
 
@@ -160,7 +167,7 @@ class TickStore(object):
         date_range : `date.DateRange`
             DateRange to delete ticks in
         """
-        query = {SYMBOL: symbol}
+        query: dict[str, Any] = {SYMBOL: symbol}
         date_range = to_pandas_closed_closed(date_range)
         if date_range is not None:
             assert date_range.start and date_range.end
@@ -171,10 +178,10 @@ class TickStore(object):
             self._metadata.delete_one({SYMBOL: symbol})
         return self._collection.delete_many(query)
 
-    def list_symbols(self, date_range=None):
+    def list_symbols(self, date_range: Any = None) -> Any:
         return self._collection.distinct(SYMBOL)
 
-    def _mongo_date_range_query(self, symbol, date_range):
+    def _mongo_date_range_query(self, symbol: Any, date_range: Any) -> dict[str, Any]:
         # Handle date_range
         if not date_range:
             date_range = DateRange()
@@ -186,7 +193,7 @@ class TickStore(object):
         # we do a pre-flight aggregate query to find the point where the
         # earliest relevant chunk starts.
 
-        start_range = {}
+        start_range: dict[str, Any] = {}
         first_dt = last_dt = None
         if date_range.start:
             assert date_range.start.tzinfo
@@ -246,23 +253,30 @@ class TickStore(object):
             return {}
         return {START: start_range}
 
-    def _symbol_query(self, symbol):
+    def _symbol_query(self, symbol: Any) -> dict[str, Any]:
         if isinstance(symbol, str):
-            query = {SYMBOL: symbol}
+            query: dict[str, Any] = {SYMBOL: symbol}
         elif symbol is not None:
             query = {SYMBOL: {'$in': symbol}}
         else:
             query = {}
         return query
 
-    def _read_preference(self, allow_secondary):
+    def _read_preference(self, allow_secondary: bool | None) -> Any:
         """ Return the mongo read preference given an 'allow_secondary' argument
         """
         allow_secondary = self._allow_secondary if allow_secondary is None else allow_secondary
         return ReadPreference.NEAREST if allow_secondary else ReadPreference.PRIMARY
 
-    def read(self, symbol, date_range=None, columns=None, include_images=False, allow_secondary=None,
-             _target_tick_count=0):
+    def read(
+        self,
+        symbol: Any,
+        date_range: Any = None,
+        columns: Any = None,
+        include_images: bool = False,
+        allow_secondary: bool | None = None,
+        _target_tick_count: int = 0,
+    ) -> pd.DataFrame:
         """
         Read data for the named symbol.  Returns a VersionedItem object with
         a data and metdata element (as passed into write).
@@ -288,12 +302,13 @@ class TickStore(object):
         pandas.DataFrame of data
         """
         perf_start = dt.now()
-        rtn = {}
-        column_set = set()
+        rtn: dict[str, list[Any]] = {}
+        column_set: set[str] = set()
 
         multiple_symbols = not isinstance(symbol, str)
 
-        date_range = to_pandas_closed_closed(date_range)
+        requested_date_range = date_range
+        date_range = _expand_date_range_end(to_pandas_closed_closed(date_range))
         query = self._symbol_query(symbol)
         query.update(self._mongo_date_range_query(symbol, date_range))
 
@@ -313,7 +328,7 @@ class TickStore(object):
                                (COLUMNS, 1),
                                (IMAGE_DOC, 1)])
 
-        column_dtypes = {}
+        column_dtypes: dict[str, Any] = {}
         ticks_read = 0
         data_coll = self._collection.with_options(read_preference=self._read_preference(allow_secondary))
         for b in data_coll.find(query, projection=projection).sort([(START, pymongo.ASCENDING)],):
@@ -340,6 +355,7 @@ class TickStore(object):
         if multiple_symbols and 'SYMBOL' not in columns:
             columns = ['SYMBOL', ] + columns
 
+        arrays: list[Any]
         if len(index) > 0:
             arrays = [np.concatenate(rtn[k]) for k in columns]
         else:
@@ -352,29 +368,29 @@ class TickStore(object):
 
         t = (dt.now() - perf_start).total_seconds()
         logger.info("Got data in %s secs, creating DataFrame..." % t)
-        if pd.__version__.startswith("0.") or pd.__version__.startswith("1.0"):
-            mgr = _arrays_to_mgr(arrays, columns, index, columns, dtype=None)
-        else:
-            # 4th argument removed + new argument typ is mandatory
-            mgr = _arrays_to_mgr(arrays, columns, index, dtype=None, typ="array")
-
-        rtn = pd.DataFrame(mgr)
+        frame = pd.DataFrame(dict(zip(columns, arrays)), index=index, columns=columns)
         # Present data in the user's default TimeZone
-        rtn.index = rtn.index.tz_convert(mktz())
+        frame.index = frame.index.tz_convert(mktz())
 
         t = (dt.now() - perf_start).total_seconds()
-        ticks = len(rtn)
+        ticks = len(frame)
         rate = int(ticks / t) if t != 0 else float("nan")
         logger.info("%d rows in %s secs: %s ticks/sec" % (ticks, t, rate))
-        if not rtn.index.is_monotonic_increasing:
+        if not frame.index.is_monotonic_increasing:
             logger.error("TimeSeries data is out of order, sorting!")
-            rtn = rtn.sort_index(kind='mergesort')
+            frame = frame.sort_index(kind='mergesort')
         if date_range:
             # FIXME: support DateRange.interval...
-            rtn = rtn.loc[date_range.start:date_range.end]
-        return rtn
+            frame = frame.loc[date_range.start:date_range.end]
+            if requested_date_range and requested_date_range.start and \
+                    requested_date_range.start.time() == dt.min.time() and requested_date_range.startopen:
+                frame = frame[frame.index.date > requested_date_range.start.date()]
+            if requested_date_range and requested_date_range.end and \
+                    requested_date_range.end.time() == dt.min.time() and requested_date_range.endopen:
+                frame = frame[frame.index.date < requested_date_range.end.date()]
+        return frame
 
-    def read_metadata(self, symbol):
+    def read_metadata(self, symbol: str) -> Any:
         """
         Read metadata for the specified symbol
 
@@ -389,9 +405,9 @@ class TickStore(object):
         """
         return self._metadata.find_one({SYMBOL: symbol})[META]
 
-    def _pad_and_fix_dtypes(self, cols, column_dtypes):
+    def _pad_and_fix_dtypes(self, cols: dict[str, list[Any]], column_dtypes: dict[str, Any]) -> dict[str, list[Any]]:
         # Pad out Nones with empty arrays of appropriate dtypes
-        rtn = {}
+        rtn: dict[str, list[Any]] = {}
         index = cols[INDEX]
         full_length = len(index)
         for k, v in cols.items():
@@ -416,7 +432,7 @@ class TickStore(object):
             rtn[k] = v
         return rtn
 
-    def _set_or_promote_dtype(self, column_dtypes, c, dtype):
+    def _set_or_promote_dtype(self, column_dtypes: dict[str, Any], c: str, dtype: Any) -> None:
         existing_dtype = column_dtypes.get(c)
         if existing_dtype is None or existing_dtype != dtype:
             # Promote ints to floats - as we can't easily represent NaNs
@@ -424,7 +440,15 @@ class TickStore(object):
                 dtype = np.dtype('f8')
             column_dtypes[c] = np.promote_types(column_dtypes.get(c, dtype), dtype)
 
-    def _prepend_image(self, document, im, rtn_length, column_dtypes, column_set, columns):
+    def _prepend_image(
+        self,
+        document: dict[str, Any],
+        im: dict[str, Any],
+        rtn_length: int,
+        column_dtypes: dict[str, Any],
+        column_set: set[str],
+        columns: Any,
+    ) -> dict[str, Any]:
         image = im[IMAGE]
         first_dt = im[IMAGE_TIME]
         if not first_dt.tzinfo:
@@ -452,8 +476,16 @@ class TickStore(object):
                 document[field] = np.insert(document[field], 0, document[field].dtype.type(val))
         return document
 
-    def _read_bucket(self, doc, column_set, column_dtypes, include_symbol, include_images, columns):
-        rtn = {}
+    def _read_bucket(
+        self,
+        doc: dict[str, Any],
+        column_set: set[str],
+        column_dtypes: dict[str, Any],
+        include_symbol: bool,
+        include_images: bool,
+        columns: Any,
+    ) -> dict[str, Any]:
+        rtn: dict[str, Any] = {}
         if doc[VERSION] != 3:
             raise ArcticException("Unhandled document version: %s" % doc[VERSION])
         # np.cumsum copies the read-only array created with frombuffer
@@ -500,7 +532,7 @@ class TickStore(object):
             rtn = self._prepend_image(rtn, doc[IMAGE_DOC], rtn_length, column_dtypes, column_set, columns)
         return rtn
 
-    def _empty(self, length, dtype):
+    def _empty(self, length: int, dtype: Any) -> np.ndarray:
         if dtype is not None and dtype == np.float64:
             rtn = np.empty(length, dtype)
             rtn[:] = np.nan
@@ -508,7 +540,7 @@ class TickStore(object):
         else:
             return np.empty(length, dtype=np.object_)
 
-    def stats(self):
+    def stats(self) -> dict[str, Any]:
         """
         Return storage statistics about the library
 
@@ -516,7 +548,7 @@ class TickStore(object):
         -------
         dictionary of storage stats
         """
-        res = {}
+        res: dict[str, Any] = {}
         db = self._collection.database
         conn = db.connection
         res['sharding'] = {}
@@ -536,7 +568,7 @@ class TickStore(object):
                          }
         return res
 
-    def _assert_nonoverlapping_data(self, symbol, start, end):
+    def _assert_nonoverlapping_data(self, symbol: str, start: dt, end: dt) -> None:
         #
         # Imagine we're trying to insert a tick bucket like:
         #      |S------ New-B -------------- E|
@@ -564,7 +596,7 @@ class TickStore(object):
                     "Document already exists with start:{} end:{} in the range of our start:{} end:{}".format(
                         doc[START], doc[END], start, end))
 
-    def write(self, symbol, data, initial_image=None, metadata=None):
+    def write(self, symbol: str, data: Any, initial_image: Any = None, metadata: Any = None) -> None:
         """
         Writes a list of market data events.
 
@@ -607,7 +639,7 @@ class TickStore(object):
                                        {SYMBOL: symbol, META: metadata},
                                        upsert=True)
 
-    def _write(self, buckets):
+    def _write(self, buckets: list[dict[str, Any]]) -> None:
         start = dt.now()
         mongo_retry(self._collection.insert_many)(buckets)
         t = (dt.now() - start).total_seconds()
@@ -615,22 +647,22 @@ class TickStore(object):
         rate = int(ticks / t) if t != 0 else float("nan")
         logger.debug("%d buckets in %s: approx %s ticks/sec" % (len(buckets), t, rate))
 
-    def _pandas_to_buckets(self, x, symbol, initial_image):
-        rtn = []
+    def _pandas_to_buckets(self, x: pd.DataFrame, symbol: str, initial_image: Any) -> list[dict[str, Any]]:
+        rtn: list[dict[str, Any]] = []
         for i in range(0, len(x), self._chunk_size):
             bucket, initial_image = TickStore._pandas_to_bucket(x[i:i + self._chunk_size], symbol, initial_image)
             rtn.append(bucket)
         return rtn
 
-    def _to_buckets(self, x, symbol, initial_image):
-        rtn = []
+    def _to_buckets(self, x: list[dict[str, Any]], symbol: str, initial_image: Any) -> list[dict[str, Any]]:
+        rtn: list[dict[str, Any]] = []
         for i in range(0, len(x), self._chunk_size):
             bucket, initial_image = TickStore._to_bucket(x[i:i + self._chunk_size], symbol, initial_image)
             rtn.append(bucket)
         return rtn
 
     @staticmethod
-    def _to_ms(date):
+    def _to_ms(date: Any) -> Any:
         if isinstance(date, dt):
             if not date.tzinfo:
                 logger.warning('WARNING: treating naive datetime as UTC in write path')
@@ -638,7 +670,7 @@ class TickStore(object):
         return date
 
     @staticmethod
-    def _str_dtype(dtype):
+    def _str_dtype(dtype: Any) -> str:
         """
         Represent dtypes without byte order, as earlier Java tickstore code doesn't support explicit byte order.
         """
@@ -655,7 +687,7 @@ class TickStore(object):
             raise UnhandledDtypeException("Bad dtype '%s'" % dtype)
 
     @staticmethod
-    def _ensure_supported_dtypes(array):
+    def _ensure_supported_dtypes(array: np.ndarray) -> np.ndarray:
         # We only support these types for now, as we need to read them in Java
         if array.dtype.kind == 'i':
             array = array.astype('<i8')
@@ -663,12 +695,10 @@ class TickStore(object):
             array = array.astype('<f8')
         elif array.dtype.kind in ('O', 'U', 'S'):
             if array.dtype.kind == 'O' and infer_dtype(array) not in ['unicode', 'string', 'bytes']:
-                # `string` in python2 and `bytes` in python3
                 raise UnhandledDtypeException("Casting object column to string failed")
             try:
-                array = array.astype(np.unicode_)
+                array = array.astype(np.str_)
             except (UnicodeDecodeError, SystemError):
-                # `UnicodeDecodeError` in python2 and `SystemError` in python3
                 array = np.array([s.decode('utf-8') for s in array])
             except:
                 raise UnhandledDtypeException("Only unicode and utf8 strings are supported.")
@@ -680,7 +710,7 @@ class TickStore(object):
         return array
 
     @staticmethod
-    def _pandas_compute_final_image(df, image, end):
+    def _pandas_compute_final_image(df: pd.DataFrame, image: dict[str, Any], end: Any) -> dict[str, Any]:
         # Compute the final image with forward fill of df applied to the image
         final_image = copy.copy(image)
         last_values = df.ffill().tail(1).to_dict()
@@ -690,8 +720,10 @@ class TickStore(object):
         return final_image
 
     @staticmethod
-    def _pandas_to_bucket(df, symbol, initial_image):
-        rtn = {SYMBOL: symbol, VERSION: CHUNK_VERSION_NUMBER, COLUMNS: {}, COUNT: len(df)}
+    def _pandas_to_bucket(
+        df: pd.DataFrame, symbol: str, initial_image: dict[str, Any] | None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        rtn: dict[str, Any] = {SYMBOL: symbol, VERSION: CHUNK_VERSION_NUMBER, COLUMNS: {}, COUNT: len(df)}
         end = to_dt(df.index[-1].to_pydatetime())
         if initial_image:
             if 'index' in initial_image:
@@ -710,7 +742,6 @@ class TickStore(object):
         logger.warning("NB treating all values as 'exists' - no longer sparse")
         rowmask = Binary(lz4_compressHC(np.packbits(np.ones(len(df), dtype='uint8')).tobytes()))
 
-        index_name = df.index.names[0] or "index"
         if PD_VER < '0.23.0':
             recs = df.to_records(convert_datetime64=False)
         else:
@@ -724,18 +755,19 @@ class TickStore(object):
                 DTYPE: TickStore._str_dtype(array.dtype),
             }
             rtn[COLUMNS][col] = col_data
+        index_ms = np.array([TickStore._to_ms(to_dt(index.to_pydatetime())) for index in df.index], dtype='uint64')
         rtn[INDEX] = Binary(
             lz4_compressHC(np.concatenate(
-                ([recs[index_name][0].astype('datetime64[ms]').view('uint64')],
-                 np.diff(
-                     recs[index_name].astype('datetime64[ms]').view('uint64')))).tobytes()))
+                ([index_ms[0]], np.diff(index_ms))).tobytes()))
         return rtn, final_image
 
     @staticmethod
-    def _to_bucket(ticks, symbol, initial_image):
-        rtn = {SYMBOL: symbol, VERSION: CHUNK_VERSION_NUMBER, COLUMNS: {}, COUNT: len(ticks)}
-        data = {}
-        rowmask = {}
+    def _to_bucket(
+        ticks: list[dict[str, Any]], symbol: str, initial_image: dict[str, Any] | None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        rtn: dict[str, Any] = {SYMBOL: symbol, VERSION: CHUNK_VERSION_NUMBER, COLUMNS: {}, COUNT: len(ticks)}
+        data: dict[str, list[Any]] = {}
+        rowmask: dict[str, Any] = {}
         start = to_dt(ticks[0]['index'])
         end = to_dt(ticks[-1]['index'])
         final_image = copy.copy(initial_image) if initial_image else {}
@@ -780,7 +812,7 @@ class TickStore(object):
         rtn[INDEX] = Binary(lz4_compressHC(np.concatenate(([data['index'][0]], np.diff(data['index']))).tobytes()))
         return rtn, final_image
 
-    def max_date(self, symbol):
+    def max_date(self, symbol: str) -> dt:
         """
         Return the maximum datetime stored for a particular symbol
 
@@ -795,7 +827,7 @@ class TickStore(object):
             raise NoDataFoundException("No Data found for {}".format(symbol))
         return utc_dt_to_local_dt(res[END])
 
-    def min_date(self, symbol):
+    def min_date(self, symbol: str) -> dt:
         """
         Return the minimum datetime stored for a particular symbol
 

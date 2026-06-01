@@ -87,7 +87,7 @@ ARCTIC_ASYNC_NWORKERS = os.environ.get('ARCTIC_ASYNC_NWORKERS', 4)
 
 
 # -------------------------------
-# Flag used to convert byte column/index/column names to unicode when read back.
+# Flag used to convert byte values and labels to text when read back.
 # -------------------------------
 FORCE_BYTES_TO_UNICODE = bool(os.environ.get('FORCE_BYTES_TO_UNICODE'))
 

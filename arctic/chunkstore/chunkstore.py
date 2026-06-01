@@ -1,7 +1,9 @@
 import hashlib
 import logging
 from collections import defaultdict
+from collections.abc import Callable, Iterator
 from itertools import groupby
+from typing import Any, cast
 
 import pymongo
 from bson.binary import Binary
@@ -31,15 +33,15 @@ USERMETA = 'u'
 
 MAX_CHUNK_SIZE = 15 * 1024 * 1024
 
-SER_MAP = {FrametoArraySerializer.TYPE: FrametoArraySerializer()}
+SER_MAP: dict[str, Any] = {FrametoArraySerializer.TYPE: FrametoArraySerializer()}
 
-CHUNKER_MAP = {DateChunker.TYPE: DateChunker(),
-               PassthroughChunker.TYPE: PassthroughChunker()}
+CHUNKER_MAP: dict[str, Any] = {DateChunker.TYPE: DateChunker(),
+                               PassthroughChunker.TYPE: PassthroughChunker()}
 
 
 class ChunkStore(object):
     @classmethod
-    def initialize_library(cls, arctic_lib, hashed=True, **kwargs):
+    def initialize_library(cls, arctic_lib: Any, hashed: bool = True, **kwargs: Any) -> None:
         ChunkStore(arctic_lib)._ensure_index()
 
         logger.info("Trying to enable sharding...")
@@ -49,7 +51,7 @@ class ChunkStore(object):
             logger.warning("Library created, but couldn't enable sharding: %s. This is OK if you're not 'admin'" % str(e))
 
     @mongo_retry
-    def _ensure_index(self):
+    def _ensure_index(self) -> None:
         self._symbols.create_index([(SYMBOL, pymongo.ASCENDING)],
                                    unique=True,
                                    background=True)
@@ -76,7 +78,7 @@ class ChunkStore(object):
                                   (END, pymongo.ASCENDING)],
                                  unique=True, background=True)
 
-    def __init__(self, arctic_lib):
+    def __init__(self, arctic_lib: Any) -> None:
         self._arctic_lib = arctic_lib
         self.serializer = FrametoArraySerializer()
 
@@ -85,27 +87,27 @@ class ChunkStore(object):
         self._reset()
 
     @mongo_retry
-    def _reset(self):
+    def _reset(self) -> None:
         # The default collection
         self._collection = self._arctic_lib.get_top_level_collection()
         self._symbols = self._collection.symbols
         self._mdata = self._collection.metadata
         self._audit = self._collection.audit
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict[str, Any]:
         return {'arctic_lib': self._arctic_lib}
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict[str, Any]) -> None:
         return ChunkStore.__init__(self, state['arctic_lib'])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return """<%s at %s>\n%s""" % (self.__class__.__name__, hex(id(self)),
                                        indent(str(self._arctic_lib), 4))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def _checksum(self, fields, data):
+    def _checksum(self, fields: list[bytes], data: bytes) -> Binary:
         """
         Checksum the passed in dictionary
         """
@@ -115,7 +117,7 @@ class ChunkStore(object):
         sha.update(data)
         return Binary(sha.digest())
 
-    def delete(self, symbol, chunk_range=None, audit=None):
+    def delete(self, symbol: str, chunk_range: Any = None, audit: dict[str, Any] | None = None) -> None:
         """
         Delete all chunks for a symbol, or optionally, chunks within a range
 
@@ -138,7 +140,7 @@ class ChunkStore(object):
                 df = CHUNKER_MAP[sym[CHUNKER]].exclude(df, chunk_range)
 
                 # remove chunks, and update any remaining data
-                query = {SYMBOL: symbol}
+                query: dict[str, Any] = {SYMBOL: symbol}
                 query.update(CHUNKER_MAP[sym[CHUNKER]].to_mongo(chunk_range))
                 self._collection.delete_many(query)
                 self._mdata.delete_many(query)
@@ -166,7 +168,7 @@ class ChunkStore(object):
 
             self._audit.insert_one(audit)
 
-    def list_symbols(self, partial_match=None):
+    def list_symbols(self, partial_match: str | None = None) -> list[str]:
         """
         Returns all symbols in the library
 
@@ -181,15 +183,15 @@ class ChunkStore(object):
         """
         symbols = self._symbols.distinct(SYMBOL)
         if partial_match is None:
-            return symbols
+            return cast(list[str], symbols)
         return [x for x in symbols if partial_match in x]
 
-    def _get_symbol_info(self, symbol):
+    def _get_symbol_info(self, symbol: str | list[str]) -> Any:
         if isinstance(symbol, list):
             return list(self._symbols.find({SYMBOL: {'$in': symbol}}))
         return self._symbols.find_one({SYMBOL: symbol})
 
-    def rename(self, from_symbol, to_symbol, audit=None):
+    def rename(self, from_symbol: str, to_symbol: str, audit: dict[str, Any] | None = None) -> None:
         """
         Rename a symbol
 
@@ -224,7 +226,7 @@ class ChunkStore(object):
             audit['old_symbol'] = from_symbol
             self._audit.insert_one(audit)
 
-    def read(self, symbol, chunk_range=None, filter_data=True, **kwargs):
+    def read(self, symbol: str | list[str], chunk_range: Any = None, filter_data: bool = True, **kwargs: Any) -> Any:
         """
         Reads data for a given symbol from the database.
 
@@ -254,7 +256,7 @@ class ChunkStore(object):
         if not sym:
             raise NoDataFoundException('No data found for %s' % (symbol))
 
-        spec = {SYMBOL: {'$in': symbol}}
+        spec: dict[str, Any] = {SYMBOL: {'$in': symbol}}
         chunker = CHUNKER_MAP[sym[0][CHUNKER]]
         deser = SER_MAP[sym[0][SERIALIZER]].deserialize
 
@@ -266,17 +268,17 @@ class ChunkStore(object):
                             (SEGMENT, pymongo.ASCENDING)]
         segment_cursor = self._collection.find(spec, sort=by_start_segment)
 
-        chunks = defaultdict(list)
+        chunks: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
         for _, segments in groupby(segment_cursor, key=lambda x: (x[START], x[SYMBOL])):
-            segments = list(segments)
-            mdata = self._mdata.find_one({SYMBOL: segments[0][SYMBOL],
-                                          START: segments[0][START],
-                                          END: segments[0][END]})
+            segment_docs = list(segments)
+            mdata = self._mdata.find_one({SYMBOL: segment_docs[0][SYMBOL],
+                                          START: segment_docs[0][START],
+                                          END: segment_docs[0][END]})
 
             # when len(segments) == 1, this is essentially a no-op
             # otherwise, take all segments and reassemble the data to one chunk
-            chunk_data = b''.join([doc[DATA] for doc in segments])
-            chunks[segments[0][SYMBOL]].append({DATA: chunk_data, METADATA: mdata})
+            chunk_data = b''.join([doc[DATA] for doc in segment_docs])
+            chunks[segment_docs[0][SYMBOL]].append({DATA: chunk_data, METADATA: mdata})
 
         skip_filter = not filter_data or chunk_range is None
 
@@ -285,7 +287,7 @@ class ChunkStore(object):
         else:
             return deser(chunks[symbol[0]], **kwargs) if skip_filter else chunker.filter(deser(chunks[symbol[0]], **kwargs), chunk_range)
 
-    def read_audit_log(self, symbol=None):
+    def read_audit_log(self, symbol: str | None = None) -> list[dict[str, Any]]:
         """
         Reads the audit log
 
@@ -302,7 +304,15 @@ class ChunkStore(object):
             return [x for x in self._audit.find({'symbol': symbol}, {'_id': False})]
         return [x for x in self._audit.find({}, {'_id': False})]
 
-    def write(self, symbol, item, metadata=None, chunker=DateChunker(), audit=None, **kwargs):
+    def write(
+        self,
+        symbol: str,
+        item: Any,
+        metadata: Any = None,
+        chunker: Any = DateChunker(),
+        audit: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
         """
         Writes data from item to symbol in the database
 
@@ -332,9 +342,9 @@ class ChunkStore(object):
 
         self._arctic_lib.check_quota()
 
-        previous_shas = []
-        doc = {}
-        meta = {}
+        previous_shas: set[Binary] = set()
+        doc: dict[str, Any] = {}
+        meta: dict[str, Any] = {}
 
         doc[SYMBOL] = symbol
         doc[LEN] = len(item)
@@ -347,8 +357,8 @@ class ChunkStore(object):
             previous_shas = set([Binary(x[SHA]) for x in self._collection.find({SYMBOL: symbol},
                                                                                projection={SHA: True, '_id': False},
                                                                                )])
-        ops = []
-        meta_ops = []
+        ops: list[Any] = []
+        meta_ops: list[Any] = []
         chunk_count = 0
 
         for start, end, chunk_size, record in chunker.to_chunks(item, **kwargs):
@@ -359,7 +369,7 @@ class ChunkStore(object):
             meta = data[METADATA]
 
             for i in range(int(len(data[DATA]) / MAX_CHUNK_SIZE + 1)):
-                chunk = {DATA: Binary(data[DATA][i * MAX_CHUNK_SIZE: (i + 1) * MAX_CHUNK_SIZE])}
+                chunk: dict[str, Any] = {DATA: Binary(data[DATA][i * MAX_CHUNK_SIZE: (i + 1) * MAX_CHUNK_SIZE])}
                 chunk[SEGMENT] = i
                 chunk[START] = meta[START] = start
                 chunk[END] = meta[END] = end
@@ -402,7 +412,15 @@ class ChunkStore(object):
             audit['chunks'] = chunk_count
             self._audit.insert_one(audit)
 
-    def __update(self, sym, item, metadata=None, combine_method=None, chunk_range=None, audit=None):
+    def __update(
+        self,
+        sym: dict[str, Any],
+        item: Any,
+        metadata: Any = None,
+        combine_method: Callable[[Any, Any], Any] | None = None,
+        chunk_range: Any = None,
+        audit: dict[str, Any] | None = None,
+    ) -> None:
         '''
         helper method used by update and append since they very closely
         resemble eachother. Really differ only by the combine method.
@@ -421,12 +439,13 @@ class ChunkStore(object):
             self.delete(symbol, chunk_range)
             sym = self._get_symbol_info(symbol)
 
-        ops = []
-        meta_ops = []
+        ops: list[Any] = []
+        meta_ops: list[Any] = []
         chunker = CHUNKER_MAP[sym[CHUNKER]]
 
         appended = 0
         new_chunks = 0
+        assert combine_method is not None
         for start, end, _, record in chunker.to_chunks(item, chunk_size=sym[CHUNK_SIZE]):
             # read out matching chunks
             df = self.read(symbol, chunk_range=chunker.to_range(start, end), filter_data=False)
@@ -459,7 +478,7 @@ class ChunkStore(object):
                                               SEGMENT: {'$gte': chunk_count}})
 
             for i in range(chunk_count):
-                chunk = {DATA: Binary(data[DATA][i * MAX_CHUNK_SIZE: (i + 1) * MAX_CHUNK_SIZE])}
+                chunk: dict[str, Any] = {DATA: Binary(data[DATA][i * MAX_CHUNK_SIZE: (i + 1) * MAX_CHUNK_SIZE])}
                 chunk[SEGMENT] = i
                 chunk[START] = start
                 chunk[END] = end
@@ -489,7 +508,15 @@ class ChunkStore(object):
                 audit['appended_rows'] = appended
             self._audit.insert_one(audit)
 
-    def append(self, symbol, item, upsert=False, metadata=None, audit=None, **kwargs):
+    def append(
+        self,
+        symbol: str,
+        item: Any,
+        upsert: bool = False,
+        metadata: Any = None,
+        audit: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
         """
         Appends data from item to symbol's data in the database.
 
@@ -521,7 +548,16 @@ class ChunkStore(object):
             audit['action'] = 'append'
         self.__update(sym, item, metadata=metadata, combine_method=SER_MAP[sym[SERIALIZER]].combine, audit=audit)
 
-    def update(self, symbol, item, metadata=None, chunk_range=None, upsert=False, audit=None, **kwargs):
+    def update(
+        self,
+        symbol: str,
+        item: Any,
+        metadata: Any = None,
+        chunk_range: Any = None,
+        upsert: bool = False,
+        audit: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> None:
         """
         Overwrites data in DB with data in item for the given symbol.
 
@@ -565,7 +601,7 @@ class ChunkStore(object):
         else:
             self.__update(sym, item, metadata=metadata, combine_method=lambda old, new: new, chunk_range=chunk_range, audit=audit)
 
-    def get_info(self, symbol):
+    def get_info(self, symbol: str) -> dict[str, Any]:
         """
         Returns information about the symbol, in a dictionary
 
@@ -581,7 +617,7 @@ class ChunkStore(object):
         sym = self._get_symbol_info(symbol)
         if not sym:
             raise NoDataFoundException("Symbol does not exist.")
-        ret = {}
+        ret: dict[str, Any] = {}
         ret['chunk_count'] = sym[CHUNK_COUNT]
         ret['len'] = sym[LEN]
         ret['appended_rows'] = sym[APPEND_COUNT]
@@ -591,7 +627,7 @@ class ChunkStore(object):
         ret['serializer'] = sym[SERIALIZER]
         return ret
 
-    def read_metadata(self, symbol):
+    def read_metadata(self, symbol: str) -> Any:
         '''
         Reads user defined metadata out for the given symbol
 
@@ -610,7 +646,7 @@ class ChunkStore(object):
         x = self._symbols.find_one({SYMBOL: symbol})
         return x[USERMETA] if USERMETA in x else None
 
-    def write_metadata(self, symbol, metadata):
+    def write_metadata(self, symbol: str, metadata: Any) -> None:
         '''
         writes user defined metadata for the given symbol
 
@@ -628,7 +664,7 @@ class ChunkStore(object):
         sym[USERMETA] = metadata
         self._symbols.replace_one({SYMBOL: symbol}, sym)
 
-    def get_chunk_ranges(self, symbol, chunk_range=None, reverse=False):
+    def get_chunk_ranges(self, symbol: str, chunk_range: Any = None, reverse: bool = False) -> Iterator[tuple[Any, Any]]:
         """
         Returns a generator of (Start, End) tuples for each chunk in the symbol
 
@@ -651,7 +687,7 @@ class ChunkStore(object):
         c = CHUNKER_MAP[sym[CHUNKER]]
 
         # all symbols have a segment 0
-        spec = {SYMBOL: symbol, SEGMENT: 0}
+        spec: dict[str, Any] = {SYMBOL: symbol, SEGMENT: 0}
         if chunk_range is not None:
             spec.update(CHUNKER_MAP[sym[CHUNKER]].to_mongo(chunk_range))
 
@@ -660,7 +696,7 @@ class ChunkStore(object):
                                        sort=[(START, pymongo.ASCENDING if not reverse else pymongo.DESCENDING)]):
             yield (c.chunk_to_str(x[START]), c.chunk_to_str(x[END]))
 
-    def iterator(self, symbol, chunk_range=None, **kwargs):
+    def iterator(self, symbol: str, chunk_range: Any = None, **kwargs: Any) -> Iterator[Any]:
         """
         Returns a generator that accesses each chunk in ascending order
 
@@ -684,7 +720,7 @@ class ChunkStore(object):
         for chunk in list(self.get_chunk_ranges(symbol, chunk_range=chunk_range)):
             yield self.read(symbol, chunk_range=c.to_range(chunk[0], chunk[1]), **kwargs)
 
-    def reverse_iterator(self, symbol, chunk_range=None, **kwargs):
+    def reverse_iterator(self, symbol: str, chunk_range: Any = None, **kwargs: Any) -> Iterator[Any]:
         """
         Returns a generator that accesses each chunk in descending order
 
@@ -708,7 +744,7 @@ class ChunkStore(object):
         for chunk in list(self.get_chunk_ranges(symbol, chunk_range=chunk_range, reverse=True)):
             yield self.read(symbol, chunk_range=c.to_range(chunk[0], chunk[1]), **kwargs)
 
-    def stats(self):
+    def stats(self) -> dict[str, Any]:
         """
         Return storage statistics about the library
 
@@ -717,7 +753,7 @@ class ChunkStore(object):
         dictionary of storage stats
         """
 
-        res = {}
+        res: dict[str, Any] = {}
         db = self._collection.database
         conn = db.connection
         res['sharding'] = {}
@@ -739,7 +775,7 @@ class ChunkStore(object):
         }
         return res
 
-    def has_symbol(self, symbol):
+    def has_symbol(self, symbol: str) -> bool:
         """
         Check if symbol exists in collection
 

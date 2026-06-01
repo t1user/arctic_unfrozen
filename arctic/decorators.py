@@ -1,7 +1,9 @@
 import logging
 import sys
+from collections.abc import Callable
 from functools import wraps
 from time import sleep
+from typing import Any, ParamSpec, TypeVar
 
 from pymongo.errors import (AutoReconnect, OperationFailure, DuplicateKeyError, ServerSelectionTimeoutError,
                             BulkWriteError)
@@ -11,10 +13,12 @@ from .hooks import log_exception as _log_exception
 logger = logging.getLogger(__name__)
 
 _MAX_RETRIES = 15
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
-def _get_host(store):
-    ret = {}
+def _get_host(store: Any) -> dict[str, Any]:
+    ret: dict[str, Any] = {}
     if store:
         try:
             if isinstance(store, (list, tuple)):
@@ -32,7 +36,7 @@ _in_retry = False
 _retry_count = 0
 
 
-def mongo_retry(f):
+def mongo_retry(f: Callable[P, R]) -> Callable[P, R]:
     """
     Catch-all decorator that handles AutoReconnect and OperationFailure
     errors from PyMongo
@@ -40,7 +44,7 @@ def mongo_retry(f):
     log_all_exceptions = 'arctic' in f.__module__ if f.__module__ else False
 
     @wraps(f)
-    def f_retry(*args, **kwargs):
+    def f_retry(*args: P.args, **kwargs: P.kwargs) -> R:
         global _retry_count, _in_retry
         top_level = not _in_retry
         _in_retry = True
@@ -66,15 +70,15 @@ def mongo_retry(f):
     return f_retry
 
 
-def _handle_error(f, e, retry_count, **kwargs):
+def _handle_error(f: Callable[..., Any], e: Exception, retry_count: int, **kwargs: Any) -> None:
     if retry_count > _MAX_RETRIES:
         logger.error('Too many retries %s [%s], raising' % (f.__name__, e))
-        e.traceback = sys.exc_info()[2]
+        e.traceback = sys.exc_info()[2]  # type: ignore[attr-defined]
         raise
     log_fn = logger.warning if retry_count > 2 else logger.debug
     log_fn('%s %s [%s], retrying %i' % (type(e), f.__name__, e, retry_count))
     # Log operation failure errors
     _log_exception(f.__name__, e, retry_count, **kwargs)
-#    if 'unauthorized' in str(e):
-#        raise
+    if isinstance(e, OperationFailure) and 'unauthorized' in str(e):
+        raise
     sleep(0.01 * min((3 ** retry_count), 50))  # backoff...

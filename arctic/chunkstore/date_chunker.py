@@ -1,3 +1,7 @@
+import datetime
+from collections.abc import Callable, Iterator
+from typing import Any, cast
+
 import pandas as pd
 
 from arctic.date import DateRange, to_pandas_closed_closed
@@ -7,7 +11,19 @@ from ._chunker import Chunker, START, END
 class DateChunker(Chunker):
     TYPE = 'date'
 
-    def to_chunks(self, df, chunk_size='D', func=None, **kwargs):
+    @staticmethod
+    def _pandas_period_frequency(chunk_size: str) -> str:
+        if isinstance(chunk_size, str) and chunk_size.startswith('A'):
+            return 'Y' + chunk_size[1:]
+        return chunk_size
+
+    def to_chunks(
+        self,
+        data: Any,
+        chunk_size: str = 'D',
+        func: Callable[[Any], Any] | None = None,
+        **kwargs: Any,
+    ) -> Iterator[tuple[datetime.datetime, datetime.datetime, str, Any]]:
         """
         chunks the dataframe/series by dates
 
@@ -25,6 +41,7 @@ class DateChunker(Chunker):
         generator that produces tuples: (start date, end date,
                   chunk_size, dataframe/series)
         """
+        df = data
         if 'date' in df.index.names:
             dates = df.index.get_level_values('date')
             if not df.index.is_monotonic_increasing:
@@ -42,7 +59,7 @@ class DateChunker(Chunker):
         else:
             raise Exception("Data must be datetime indexed or have a column named 'date'")
 
-        period_obj = dates.to_period(chunk_size)
+        period_obj = dates.to_period(self._pandas_period_frequency(chunk_size))
         period_obj_reduced = period_obj.drop_duplicates()
         count = 0
         for _, g in df.groupby(period_obj._data):
@@ -54,7 +71,7 @@ class DateChunker(Chunker):
             else:
                 yield start, end, chunk_size, g
 
-    def to_range(self, start, end):
+    def to_range(self, start: Any, end: Any) -> DateRange:
         """
         takes start, end from to_chunks and returns a "range" that can be used
         as the argument to methods require a chunk_range
@@ -65,7 +82,7 @@ class DateChunker(Chunker):
         """
         return DateRange(start, end)
 
-    def chunk_to_str(self, chunk_id):
+    def chunk_to_str(self, chunk_id: Any) -> bytes:
         """
         Converts parts of a chunk range (start or end) to a string. These
         chunk ids/indexes/markers are produced by to_chunks.
@@ -77,7 +94,7 @@ class DateChunker(Chunker):
         """
         return str(chunk_id).encode('ascii')
 
-    def to_mongo(self, range_obj):
+    def to_mongo(self, range_obj: DateRange | pd.DatetimeIndex | tuple[Any, ...]) -> dict[str, Any]:
         """
         takes the range object used for this chunker type
         and converts it into a string that can be use for a
@@ -98,7 +115,7 @@ class DateChunker(Chunker):
         else:
             return {}
 
-    def filter(self, data, range_obj):
+    def filter(self, data: Any, range_obj: DateRange | pd.DatetimeIndex | tuple[Any, ...]) -> Any:
         """
         ensures data is properly subset to the range in range_obj.
         (Depending on how the chunking is implemented, it might be possible
@@ -114,7 +131,7 @@ class DateChunker(Chunker):
         if isinstance(range_obj, (pd.DatetimeIndex, tuple)):
             range_obj = DateRange(range_obj[0], range_obj[-1])
 
-        range_obj = to_pandas_closed_closed(range_obj, add_tz=False)
+        range_obj = cast(DateRange, to_pandas_closed_closed(range_obj, add_tz=False))
         start = range_obj.start
         end = range_obj.end
 
@@ -132,7 +149,7 @@ class DateChunker(Chunker):
         else:
             return data
 
-    def exclude(self, data, range_obj):
+    def exclude(self, data: Any, range_obj: DateRange | pd.DatetimeIndex | tuple[Any, ...]) -> Any:
         """
         Removes data within the bounds of the range object (inclusive)
 

@@ -1,3 +1,6 @@
+from collections.abc import Iterator
+from typing import Any
+
 from pandas import DataFrame, Series
 
 from ._chunker import Chunker
@@ -6,7 +9,7 @@ from ._chunker import Chunker
 class PassthroughChunker(Chunker):
     TYPE = 'passthru'
 
-    def to_chunks(self, df, **kwargs):
+    def to_chunks(self, data: Any, **kwargs: Any) -> Iterator[tuple[bytes, bytes, bytes, Any]]:
         """
         pass thru chunker of the dataframe/series
 
@@ -14,10 +17,10 @@ class PassthroughChunker(Chunker):
         -------
         ('NA', 'NA', 'NA', dataframe/series)
         """
-        if len(df) > 0:
-            yield b'NA', b'NA', b'NA', df
+        if len(data) > 0:
+            yield b'NA', b'NA', b'NA', data
 
-    def to_range(self, start, end):
+    def to_range(self, start: Any, end: Any) -> bytes:
         """
         returns a RangeObject from start/end sentinels.
 
@@ -27,7 +30,7 @@ class PassthroughChunker(Chunker):
         """
         return b'NA'
 
-    def chunk_to_str(self, chunk_id):
+    def chunk_to_str(self, chunk_id: Any) -> bytes:
         """
         Converts parts of a chunk range (start or end) to a string
 
@@ -37,7 +40,7 @@ class PassthroughChunker(Chunker):
         """
         return b'NA'
 
-    def to_mongo(self, range_obj):
+    def to_mongo(self, range_obj: Any) -> dict[str, Any]:
         """
         returns mongo query against range object.
         since range object is not valid, returns empty dict
@@ -48,7 +51,7 @@ class PassthroughChunker(Chunker):
         """
         return {}
 
-    def filter(self, data, range_obj):
+    def filter(self, data: DataFrame | Series, range_obj: Any) -> DataFrame | Series:
         """
         ensures data is properly subset to the range in range_obj.
         since range object is not valid, returns data
@@ -59,7 +62,7 @@ class PassthroughChunker(Chunker):
         """
         return data
 
-    def exclude(self, data, range_obj):
+    def exclude(self, data: DataFrame | Series, range_obj: Any) -> DataFrame | Series:
         """
         Removes data within the bounds of the range object.
         Since range object is not valid for this chunk type,

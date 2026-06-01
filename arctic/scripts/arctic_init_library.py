@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import argparse
 import logging
 
@@ -13,7 +11,7 @@ from ..hooks import get_mongodb_uri
 logger = logging.getLogger(__name__)
 
 
-def main():
+def main() -> None:
     usage = """Initializes a named library in a user's database.  Note that it will enable sharding on the underlying
     collection if it can.  To do this you must have admin credentials in arctic:
 

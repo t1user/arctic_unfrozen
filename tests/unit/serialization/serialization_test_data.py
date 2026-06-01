@@ -11,6 +11,12 @@ _TEST_DATA = None
 df_serializer = DataFrameSerializer()
 
 
+def _cast_column_to_object(df, column_position):
+    """Allow mixed-type test data on pandas versions that reject implicit upcasts."""
+    column = df.columns[column_position]
+    df[column] = df[column].astype(object)
+
+
 def _mixed_test_data():
     global _TEST_DATA
     if _TEST_DATA is None:
@@ -23,10 +29,12 @@ def _mixed_test_data():
 
         with_some_objects_ts = medium_ts.copy(deep=True)
         with_some_objects_ts.iloc[0:NON_HOMOGENEOUS_DTYPE_PATCH_SIZE_ROWS, 0] = None
+        _cast_column_to_object(with_some_objects_ts, 1)
         with_some_objects_ts.iloc[0:NON_HOMOGENEOUS_DTYPE_PATCH_SIZE_ROWS, 1] = 'A string'
         large_with_some_objects = create_test_data(size=10000, cols=64, index=True, multiindex=False, random_data=True,
                                                    random_ids=True, use_hours=True)
         large_with_some_objects.iloc[0:NON_HOMOGENEOUS_DTYPE_PATCH_SIZE_ROWS, 0] = None
+        _cast_column_to_object(large_with_some_objects, 1)
         large_with_some_objects.iloc[0:NON_HOMOGENEOUS_DTYPE_PATCH_SIZE_ROWS, 1] = 'A string'
 
         with_string_ts = medium_ts.copy(deep=True)
@@ -102,6 +110,7 @@ def _mixed_test_data():
 
         # Multi-column with some objects
         multi_column_with_some_objects = multi_column_no_multiindex.copy()
+        _cast_column_to_object(multi_column_with_some_objects, 1)
         multi_column_with_some_objects.iloc[1:, 1:2] = 'Convert this columnt dtype to object'
 
         # Index with timezone-aware datetime

@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import logging
 import optparse
 
@@ -12,7 +10,7 @@ from ..hooks import get_mongodb_uri
 logger = logging.getLogger(__name__)
 
 
-def main():
+def main() -> None:
     usage = """usage: %prog [options]
 
     Deletes the named library from a user's database.

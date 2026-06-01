@@ -1,4 +1,5 @@
 from collections import namedtuple
+from typing import Any
 
 
 class VersionedItem(namedtuple('VersionedItem', ['symbol', 'library', 'data', 'version', 'metadata', 'host'])):
@@ -6,16 +7,18 @@ class VersionedItem(namedtuple('VersionedItem', ['symbol', 'library', 'data', 'v
     Class representing a Versioned object in VersionStore.
     """
 
-    def __new__(cls, symbol, library, data, version, metadata, host=None):
+    def __new__(
+        cls, symbol: str, library: str | None, data: Any, version: int, metadata: Any, host: str | None = None
+    ) -> "VersionedItem":
         return super(VersionedItem, cls).__new__(cls, symbol, library, data, version, metadata, host)
 
-    def metadata_dict(self):
+    def metadata_dict(self) -> dict[str, Any]:
         return {'symbol': self.symbol, 'library': self.library, 'version': self.version}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "VersionedItem(symbol=%s,library=%s,data=%s,version=%s,metadata=%s,host=%s)" % \
             (self.symbol, self.library, type(self.data), self.version, self.metadata, self.host)
 

@@ -1,12 +1,12 @@
 import logging
-from collections import namedtuple
+from typing import Any, NamedTuple, cast
 
 from pymongo.errors import OperationFailure
 
 logger = logging.getLogger(__name__)
 
 
-def authenticate(db, user, password):
+def authenticate(db: Any, user: str, password: str) -> bool:
     """
     Return True / False on authentication success.
 
@@ -14,16 +14,22 @@ def authenticate(db, user, password):
     """
     try:
         logger.debug("Authenticating {} with {}".format(db, user))
-        return db.authenticate(user, password)
+        return cast(bool, db.authenticate(user, password))
     except OperationFailure as e:
         logger.debug("Auth Error %s" % e)
     return False
 
 
-Credential = namedtuple("MongoCredentials", ['database', 'user', 'password'])
+class MongoCredentials(NamedTuple):
+    database: str
+    user: str
+    password: str
 
 
-def get_auth(host, app_name, database_name):
+Credential = MongoCredentials
+
+
+def get_auth(host: str, app_name: str, database_name: str | None) -> MongoCredentials | None:
     """
     Authentication hook to allow plugging in custom authentication credential providers
     """

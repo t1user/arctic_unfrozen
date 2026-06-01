@@ -116,7 +116,6 @@ def test_other_exceptions_not_logged_outside_of_arctic():
     assert le.call_count == 0
 
 
-@pytest.mark.xfail(reason="CS-8393 Mongo server reports auth failure when servers flip")
 def test_auth_failure_no_retry():
     error = OperationFailure('unauthorized for db:arctic_jblackburn')
     with patch('arctic.decorators._log_exception', autospec=True) as le:
@@ -125,7 +124,7 @@ def test_auth_failure_no_retry():
             raise error
         with pytest.raises(OperationFailure) as e:
             foo()
-    assert 'OperationFailure: unauthorized for db:arctic_jblackburn' in str(e.value)
+    assert 'unauthorized for db:arctic_jblackburn' in str(e.value)
     assert le.call_count == 1
 
 

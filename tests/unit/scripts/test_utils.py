@@ -82,6 +82,20 @@ def test_do_db_auth_admin_user_creds_fails():
     logger.error.assert_called_once_with("Failed to authenticate to '%s' as Admin. Giving up." % ('hostname'))
 
 
+def test_do_db_auth_admin_without_user_creds():
+    admin_creds = Mock()
+    connection = MagicMock()
+    with patch('arctic.scripts.utils.logger', autospec=True) as logger, \
+         patch('arctic.scripts.utils.get_auth', autospec=True, side_effect=[admin_creds, None]) as get_auth:
+        assert do_db_auth('hostname', connection, 'arctic_user')
+
+    assert get_auth.call_args_list == [call('hostname', 'admin', 'admin'),
+                                       call('hostname', 'arctic', 'arctic_user')]
+    connection.admin.authenticate.assert_called_once_with(admin_creds.user, admin_creds.password)
+    connection.__getitem__.assert_not_called()
+    assert logger.error.call_count == 0
+
+
 def test_do_db_auth_role():
     # Create the user agains the current mongo database
     admin_creds = Mock()

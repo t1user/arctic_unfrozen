@@ -3,6 +3,7 @@ import os
 import re
 import threading
 import warnings
+from typing import Any, cast
 
 # just suppress for pymongo
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -32,16 +33,16 @@ VERSION_STORE = version_store.VERSION_STORE_TYPE
 METADATA_STORE = metadata_store.METADATA_STORE_TYPE
 TICK_STORE = tickstore.TICK_STORE_TYPE
 CHUNK_STORE = chunkstore.CHUNK_STORE_TYPE
-LIBRARY_TYPES = {version_store.VERSION_STORE_TYPE: version_store.VersionStore,
-                 tickstore.TICK_STORE_TYPE: tickstore.TickStore,
-                 toplevel.TICK_STORE_TYPE: toplevel.TopLevelTickStore,
-                 chunkstore.CHUNK_STORE_TYPE: chunkstore.ChunkStore,
-                 bson_store.BSON_STORE_TYPE: bson_store.BSONStore,
-                 metadata_store.METADATA_STORE_TYPE: metadata_store.MetadataStore
-                 }
+LIBRARY_TYPES: dict[str, Any] = {version_store.VERSION_STORE_TYPE: version_store.VersionStore,
+                                 tickstore.TICK_STORE_TYPE: tickstore.TickStore,
+                                 toplevel.TICK_STORE_TYPE: toplevel.TopLevelTickStore,
+                                 chunkstore.CHUNK_STORE_TYPE: chunkstore.ChunkStore,
+                                 bson_store.BSON_STORE_TYPE: bson_store.BSONStore,
+                                 metadata_store.METADATA_STORE_TYPE: metadata_store.MetadataStore
+                                 }
 
 
-def register_library_type(name, type_):
+def register_library_type(name: str, type_: Any) -> None:
     """
     Register a Arctic Library Type handler
     """
@@ -74,9 +75,16 @@ class Arctic(object):
     _MAX_CONNS = 4
     __conn = None
 
-    def __init__(self, mongo_host, app_name=APPLICATION_NAME, allow_secondary=False,
-                 socketTimeoutMS=10 * 60 * 1000, connectTimeoutMS=2 * 1000,
-                 serverSelectionTimeoutMS=30 * 1000, **kwargs):
+    def __init__(
+        self,
+        mongo_host: Any,
+        app_name: Any = APPLICATION_NAME,
+        allow_secondary: bool = False,
+        socketTimeoutMS: Any = 10 * 60 * 1000,
+        connectTimeoutMS: Any = 2 * 1000,
+        serverSelectionTimeoutMS: Any = 30 * 1000,
+        **kwargs: Any,
+    ) -> None:
         """
         Constructs a Arctic Datastore.
 
@@ -105,7 +113,7 @@ class Arctic(object):
             for example ssl parameters.
         """
         self._application_name = app_name
-        self._library_cache = {}
+        self._library_cache: dict[str, Any] = {}
         self._allow_secondary = allow_secondary
         self._socket_timeout = socketTimeoutMS
         self._connect_timeout = connectTimeoutMS
@@ -113,7 +121,7 @@ class Arctic(object):
         self._lock = threading.RLock()
         self._pid = os.getpid()
         self._pymongo_kwargs = kwargs
-        self._cache = None
+        self._cache: Any = None
 
         if isinstance(mongo_host, str):
             self._given_instance = False
@@ -129,7 +137,7 @@ class Arctic(object):
 
     @property
     @mongo_retry
-    def _conn(self):
+    def _conn(self) -> Any:
         with self._lock:
             # We must make sure that no MongoClient instances are used from parent after fork:
             #    http://api.mongodb.com/python/current/faq.html#using-pymongo-with-multiprocessing
@@ -164,7 +172,7 @@ class Arctic(object):
 
             return self.__conn
 
-    def reset(self):
+    def reset(self) -> None:
         logger.debug("Arctic.reset()")
         with self._lock:
             if self.__conn is not None:
@@ -175,13 +183,13 @@ class Arctic(object):
                     logger.debug("Library reset() %s" % l)
                     l._reset()  # the existence of _reset() is not guaranteed/enforced, it also triggers re-auth
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "<Arctic at %s, connected to %s>" % (hex(id(self)), str(self._conn))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict[str, Any]:
         return {'mongo_host': self.mongo_host,
                 'app_name': self._application_name,
                 'allow_secondary': self._allow_secondary,
@@ -189,17 +197,17 @@ class Arctic(object):
                 'connectTimeoutMS': self._connect_timeout,
                 'serverSelectionTimeoutMS': self._server_selection_timeout}
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict[str, Any]) -> None:
         return Arctic.__init__(self, **state)
 
-    def is_caching_enabled(self):
+    def is_caching_enabled(self) -> bool:
         """
         Allows people to enable or disable caching for list_libraries globally.
         """
         _ = self._conn  # Ensures the connection exists and cache is initialized with it.
-        return self._cache.is_caching_enabled(ENABLE_CACHE)
+        return cast(bool, self._cache.is_caching_enabled(ENABLE_CACHE))
 
-    def list_libraries(self, newer_than_secs=None):
+    def list_libraries(self, newer_than_secs: Any = None) -> list[str]:
         """
         Returns
         -------
@@ -210,8 +218,8 @@ class Arctic(object):
         return self._list_libraries()
 
     @mongo_retry
-    def _list_libraries(self):
-        libs = []
+    def _list_libraries(self) -> list[str]:
+        libs: list[str] = []
         for db in self._conn.list_database_names():
             if db.startswith(self.DB_PREFIX + '_'):
                 for coll in self._conn[db].list_collection_names():
@@ -224,7 +232,7 @@ class Arctic(object):
         return libs
 
     # Better to be pessimistic here and not retry.
-    def _list_libraries_cached(self, newer_than_secs=None):
+    def _list_libraries_cached(self, newer_than_secs: Any = None) -> list[str]:
         """
         Returns
         -------
@@ -240,13 +248,13 @@ class Arctic(object):
             self._cache.set('list_libraries', libs)
             return libs
 
-        return cache_data
+        return cast(list[str], cache_data)
 
-    def reload_cache(self):
+    def reload_cache(self) -> None:
         _ = self._conn  # Ensures the connection exists and cache is initialized with it.
         self._cache.set('list_libraries', self._list_libraries())
 
-    def library_exists(self, library):
+    def library_exists(self, library: str) -> bool:
         """
         Check whether a given library exists.
 
@@ -273,7 +281,7 @@ class Arctic(object):
             pass
         return exists
 
-    def _sanitize_lib_name(self, library):
+    def _sanitize_lib_name(self, library: str) -> str:
         # For list libraries, we don't return the fully qualified lib name. eg. arctic_skhare.test -> skhare.test
         if library.startswith(self.DB_PREFIX + '_'):
             return library[len(self.DB_PREFIX) + 1:]
@@ -281,7 +289,7 @@ class Arctic(object):
         return library
 
     @mongo_retry
-    def initialize_library(self, library, lib_type=VERSION_STORE, **kwargs):
+    def initialize_library(self, library: str, lib_type: str = VERSION_STORE, **kwargs: Any) -> None:
         """
         Create an Arctic Library or a particular type.
 
@@ -314,7 +322,7 @@ class Arctic(object):
         self._cache.append('list_libraries', self._sanitize_lib_name(library))
 
     @mongo_retry
-    def delete_library(self, library):
+    def delete_library(self, library: str) -> None:
         """
         Delete an Arctic Library, and all associated collections in the MongoDB.
 
@@ -339,7 +347,7 @@ class Arctic(object):
 
         self._cache.delete_item_from_key('list_libraries', self._sanitize_lib_name(library))
 
-    def get_library(self, library):
+    def get_library(self, library: str) -> Any:
         """
         Return the library instance.  Can generally use slicing to return the library:
             arctic_store[library]
@@ -353,7 +361,7 @@ class Arctic(object):
             return self._library_cache[library]
 
         try:
-            error = None
+            error: Exception | None = None
             lib = ArcticLibraryBinding(self, library)
             lib_type = lib.get_library_type()
         except (OperationFailure, AutoReconnect) as e:
@@ -374,13 +382,13 @@ class Arctic(object):
         self._library_cache[lib.get_name()] = instance
         return self._library_cache[library]
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Any) -> Any:
         if isinstance(key, str):
             return self.get_library(key)
         else:
             raise ArcticException("Unrecognised library specification - use [libraryName]")
 
-    def set_quota(self, library, quota):
+    def set_quota(self, library: str, quota: Any) -> None:
         """
         Set a quota (in bytes) on this user library.  The quota is 'best effort',
         and should be set conservatively.
@@ -395,7 +403,7 @@ class Arctic(object):
         """
         ArcticLibraryBinding(self, library).set_quota(quota)
 
-    def get_quota(self, library):
+    def get_quota(self, library: str) -> Any:
         """
         Return the quota currently set on the library.
 
@@ -406,7 +414,7 @@ class Arctic(object):
         """
         return ArcticLibraryBinding(self, library).get_quota()
 
-    def check_quota(self, library):
+    def check_quota(self, library: str) -> None:
         """
         Check the quota on the library, as would be done during normal writes.
 
@@ -421,7 +429,7 @@ class Arctic(object):
         """
         ArcticLibraryBinding(self, library).check_quota()
 
-    def rename_library(self, from_lib, to_lib):
+    def rename_library(self, from_lib: str, to_lib: str) -> None:
         """
         Renames a library
 
@@ -454,7 +462,7 @@ class Arctic(object):
         self._cache.update_item_for_key(
             'list_libraries', self._sanitize_lib_name(from_lib), self._sanitize_lib_name(to_lib))
 
-    def get_library_type(self, lib):
+    def get_library_type(self, lib: str) -> Any:
         """
         Returns the type of the library
 
@@ -484,23 +492,23 @@ class ArcticLibraryBinding(object):
     quota_countdown = 0
 
     @classmethod
-    def _parse_db_lib(cls, library):
+    def _parse_db_lib(cls, library: str) -> tuple[str, str]:
         """
         Returns the canonical (database_name, library) for the passed in
         string 'library'.
         """
-        database_name = library.split('.', 2)
-        if len(database_name) == 2:
-            library = database_name[1]
-            if database_name[0].startswith(cls.DB_PREFIX):
-                database_name = database_name[0]
+        database_parts = library.split('.', 2)
+        if len(database_parts) == 2:
+            library = database_parts[1]
+            if database_parts[0].startswith(cls.DB_PREFIX):
+                database_name = database_parts[0]
             else:
-                database_name = cls.DB_PREFIX + '_' + database_name[0]
+                database_name = cls.DB_PREFIX + '_' + database_parts[0]
         else:
             database_name = cls.DB_PREFIX
         return database_name, library
 
-    def __init__(self, arctic, library):
+    def __init__(self, arctic: Arctic, library: str) -> None:
         self.arctic = arctic
         self._curr_conn = self.arctic._conn
         self._lock = threading.RLock()
@@ -510,7 +518,7 @@ class ArcticLibraryBinding(object):
         self._auth(self.arctic._conn[self.database_name])
 
     @property
-    def _db(self):
+    def _db(self) -> Any:
         with self._lock:
             arctic_conn = self.arctic._conn
             if arctic_conn is not self._curr_conn:
@@ -519,24 +527,24 @@ class ArcticLibraryBinding(object):
         return self.arctic._conn[self.database_name]
 
     @property
-    def _library_coll(self):
+    def _library_coll(self) -> Any:
         return self._db[self.library]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return """<ArcticLibrary at %s, %s.%s>
 %s""" % (hex(id(self)), self._db.name, self._library_coll.name, indent(str(self.arctic), 4))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
-    def __getstate__(self):
+    def __getstate__(self) -> dict[str, Any]:
         return {'arctic': self.arctic, 'library': '.'.join([self.database_name, self.library])}
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: dict[str, Any]) -> None:
         return ArcticLibraryBinding.__init__(self, state['arctic'], state['library'])
 
     @mongo_retry
-    def _auth(self, database):
+    def _auth(self, database: Any) -> None:
         # Get .mongopass details here
         if not hasattr(self.arctic, 'mongo_host'):
             return
@@ -545,14 +553,14 @@ class ArcticLibraryBinding(object):
         if auth:
             authenticate(database, auth.user, auth.password)
 
-    def reset_auth(self):
+    def reset_auth(self) -> None:
         logger.debug("reset_auth() %s" % self)
         self._auth(self._db)
 
-    def get_name(self):
-        return self._db.name + '.' + self._library_coll.name
+    def get_name(self) -> str:
+        return cast(str, self._db.name + '.' + self._library_coll.name)
 
-    def get_top_level_collection(self):
+    def get_top_level_collection(self) -> Any:
         """
         Return the top-level collection for the Library.  This collection is to be used
         for storing data.
@@ -562,7 +570,7 @@ class ArcticLibraryBinding(object):
         """
         return self._library_coll
 
-    def set_quota(self, quota_bytes):
+    def set_quota(self, quota_bytes: Any) -> None:
         """
         Set a quota (in bytes) on this user library.  The quota is 'best effort',
         and should be set conservatively.
@@ -573,13 +581,13 @@ class ArcticLibraryBinding(object):
         self.quota = quota_bytes
         self.quota_countdown = 0
 
-    def get_quota(self):
+    def get_quota(self) -> Any:
         """
         Get the current quota on this user library.
         """
         return self.get_library_metadata(ArcticLibraryBinding.QUOTA)
 
-    def check_quota(self):
+    def check_quota(self) -> None:
         """
         Check whether the user is within quota.  Should be called before
         every write.  Will raise() if the library has exceeded its allotted
@@ -600,7 +608,7 @@ class ArcticLibraryBinding(object):
         library = self.arctic[self.get_name()]
         stats = library.stats()
 
-        def to_gigabytes(bytes_):
+        def to_gigabytes(bytes_: float) -> float:
             return bytes_ / 1024. / 1024. / 1024.
 
         # Have we exceeded our quota?
@@ -634,14 +642,14 @@ class ArcticLibraryBinding(object):
         except Exception as e:
             logger.warning("Encountered an exception while calculating quota statistics: %s" % str(e))
 
-    def get_library_type(self):
+    def get_library_type(self) -> Any:
         return self.get_library_metadata(ArcticLibraryBinding.TYPE_FIELD)
 
-    def set_library_type(self, lib_type):
+    def set_library_type(self, lib_type: Any) -> None:
         self.set_library_metadata(ArcticLibraryBinding.TYPE_FIELD, lib_type)
 
     @mongo_retry
-    def get_library_metadata(self, field):
+    def get_library_metadata(self, field: str) -> Any:
         lib_metadata = self._library_coll[self.arctic.METADATA_COLL].find_one({"_id": self.arctic.METADATA_DOC_ID})
         if lib_metadata is not None:
             return lib_metadata.get(field)
@@ -649,6 +657,6 @@ class ArcticLibraryBinding(object):
             return None
 
     @mongo_retry
-    def set_library_metadata(self, field, value):
+    def set_library_metadata(self, field: str, value: Any) -> None:
         self._library_coll[self.arctic.METADATA_COLL].update_one({'_id': self.arctic.METADATA_DOC_ID},
                                                                  {'$set': {field: value}}, upsert=True)

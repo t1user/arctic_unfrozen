@@ -57,7 +57,7 @@ l.write('thing', object())
 
 ## Issues
 
-### tzlocal issue with pytz == 1.5.1
+### tzlocal issue with old timezone packages
 
 ```
   File "<frozen importlib._bootstrap>", line 441, in spec_from_loader
@@ -66,7 +66,8 @@ l.write('thing', object())
 SyntaxError: invalid escape sequence \s
 ```
 
-`pip install pytz==1.4`
+This historical workaround is obsolete. Current Arctic uses the stdlib
+`zoneinfo` timezone implementation.
 
 ### Mongo not finding mongod
 

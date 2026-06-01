@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import numpy as np
 import numpy.ma as ma
@@ -55,10 +56,13 @@ class FrameConverter(object):
         }
     """
 
-    def _convert_types(self, a):
+    def _convert_types(self, a: Any) -> tuple[Any, Any | None]:
         """
         Converts object arrays of strings to numpy string arrays
         """
+        if not hasattr(a.dtype, 'str'):
+            a = np.asarray(a)
+
         # No conversion for scalar type
         if a.dtype != 'object':
             return a, None
@@ -92,7 +96,7 @@ class FrameConverter(object):
         else:
             raise ValueError('Cannot store arrays with {} dtype'.format(type_))
 
-    def docify(self, df):
+    def docify(self, df: pd.DataFrame) -> SON:
         """
         Convert a Pandas DataFrame to SON.
 
@@ -108,7 +112,7 @@ class FrameConverter(object):
         data = Binary(b'')
         start = 0
 
-        arrays = []
+        arrays: list[bytes] = []
         for c in df:
             try:
                 columns.append(str(c))
@@ -123,9 +127,9 @@ class FrameConverter(object):
                 logging.warning(msg)
                 raise e
 
-        arrays = compress_array(arrays)
+        compressed_arrays = compress_array(arrays)
         for index, c in enumerate(df):
-            d = Binary(arrays[index])
+            d = Binary(compressed_arrays[index])
             lengths[str(c)] = (start, start + len(d) - 1)
             start += len(d)
             data += d
@@ -139,11 +143,13 @@ class FrameConverter(object):
 
         return doc
 
-    def objify(self, doc, columns=None):
+    def objify(self, doc: Any, columns: list[str] | None = None) -> pd.DataFrame:
         """
         Decode a Pymongo SON object into an Pandas DataFrame
         """
         cols = columns or doc[METADATA][COLUMNS]
+        if not cols:
+            return pd.DataFrame()
         data = {}
 
         for col in cols:
@@ -152,9 +158,9 @@ class FrameConverter(object):
             if col not in doc[METADATA][LENGTHS]:
                 d = np.array(np.nan)
             else:
-                d = decompress(doc[DATA][doc[METADATA][LENGTHS][col][0]: doc[METADATA][LENGTHS][col][1] + 1])
+                raw_data = decompress(doc[DATA][doc[METADATA][LENGTHS][col][0]: doc[METADATA][LENGTHS][col][1] + 1])
                 # d is ready-only but that's not an issue since DataFrame will copy the data anyway.
-                d = np.frombuffer(d, doc[METADATA][DTYPE][col])
+                d = np.frombuffer(raw_data, doc[METADATA][DTYPE][col])
 
                 if MASK in doc[METADATA] and col in doc[METADATA][MASK]:
                     mask_data = decompress(doc[METADATA][MASK][col])
@@ -169,10 +175,11 @@ class FrameConverter(object):
 class FrametoArraySerializer(Serializer):
     TYPE = 'FrameToArray'
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.converter = FrameConverter()
 
-    def serialize(self, df):
+    def serialize(self, data: Any, **kwargs: Any) -> SON:
+        df = data
         if isinstance(df, pd.Series):
             dtype = 'series'
             df = df.to_frame()
@@ -193,7 +200,7 @@ class FrametoArraySerializer(Serializer):
         ret[METADATA][TYPE] = dtype
         return ret
 
-    def deserialize(self, data, columns=None):
+    def deserialize(self, data: Any, **kwargs: Any) -> pd.DataFrame | pd.Series:
         """
         Deserializes SON to a DataFrame
 
@@ -208,6 +215,7 @@ class FrametoArraySerializer(Serializer):
         -------
         pandas dataframe or series
         """
+        columns = kwargs.get("columns")
         if not data:
             return pd.DataFrame()
 
@@ -232,7 +240,7 @@ class FrametoArraySerializer(Serializer):
             return df[df.columns[0]]
         return df
 
-    def combine(self, a, b):
+    def combine(self, a: pd.DataFrame | pd.Series, b: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
         if a.index.names != [None]:
             return pd.concat([a, b]).sort_index()
         return pd.concat([a, b])

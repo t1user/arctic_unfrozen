@@ -3,6 +3,7 @@ Handle audited data changes.
 """
 import logging
 from functools import partial
+from typing import Any, Callable
 
 from pymongo.errors import OperationFailure
 
@@ -18,7 +19,7 @@ class DataChange(object):
     """
     Object representing incoming data change
     """
-    def __init__(self, date_range, new_data):
+    def __init__(self, date_range: Any, new_data: Any) -> None:
         self.date_range = date_range
         self.new_data = new_data
 
@@ -44,8 +45,17 @@ class ArcticTransaction(object):
     retry the whole block should that happens, as the assumption is that you need to base your changes on a different
     starting timeseries.
     """
-    def __init__(self, version_store, symbol, user, log, modify_timeseries=None, audit=True,
-                 *args, **kwargs):
+    def __init__(
+        self,
+        version_store: Any,
+        symbol: str,
+        user: str,
+        log: str,
+        modify_timeseries: Any | None = None,
+        audit: bool = True,
+        *args: Any,
+        **kwargs: Any
+    ) -> None:
         """
         Parameters
         ----------
@@ -100,8 +110,9 @@ class ArcticTransaction(object):
         if modify_timeseries is not None and not are_equals(modify_timeseries, self.base_ts.data):
             raise ConcurrentModificationException()
         self._do_write = False
+        self._write: Callable[[], Any] | None = None
 
-    def change(self, symbol, data_changes, **kwargs):
+    def change(self, symbol: str, data_changes: list[DataChange], **kwargs: Any) -> None:
         """
         Change, and audit 'data' under the specified 'symbol' name to this library.
 
@@ -115,7 +126,14 @@ class ArcticTransaction(object):
         """
         pass
 
-    def write(self, symbol, data, prune_previous_version=True, metadata=None, **kwargs):
+    def write(
+        self,
+        symbol: str,
+        data: Any,
+        prune_previous_version: bool = True,
+        metadata: Any | None = None,
+        **kwargs: Any
+    ) -> None:
         """
         Records a write request to be actioned on context exit. Takes exactly the same parameters as the regular
         library write call.
@@ -127,11 +145,12 @@ class ArcticTransaction(object):
         self._write = partial(self._version_store.write, symbol, data, prune_previous_version=prune_previous_version,
                               metadata=metadata, **kwargs)
 
-    def __enter__(self):
+    def __enter__(self) -> "ArcticTransaction":
         return self
 
-    def __exit__(self, *args, **kwargs):
+    def __exit__(self, *args: Any, **kwargs: Any) -> None:
         if self._do_write:
+            assert self._write is not None
             written_ver = self._write()
             versions = [x['version'] for x in self._version_store.list_versions(self._symbol)]
             versions.append(0)

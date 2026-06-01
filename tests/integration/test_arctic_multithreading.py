@@ -13,6 +13,10 @@ from arctic.store.version_store import VersionStore
 MY_ARCTIC = None  # module-level Arctic singleton
 AUTH_COUNT = 0
 
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:This process .* is multi-threaded, use of fork\\(\\) may lead to deadlocks in the child.:DeprecationWarning"
+)
+
 
 def f(library_name, total_writes, do_reset):
     my_pid = os.getpid()
