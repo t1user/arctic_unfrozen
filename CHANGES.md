@@ -11,6 +11,7 @@ distribution onto a current Python and MongoDB stack.
  * Packaging: move active package metadata and dependency declarations into `pyproject.toml`.
  * Docs: explain the relationship to Man Group's ArcticDB successor and document why MongoDB-backed Arctic remains useful for existing deployments.
  * Docs: retain the original Arctic documentation as the primary reference while it is refreshed.
+ * Docs: publish maintained documentation at Read the Docs and validate strict MkDocs builds in CI.
 
 #### Supported runtime stack
  * Compatibility: support and test Python 3.10 through 3.13. Python 2 runtimes and Python 2-only serialized data are no longer compatibility targets.

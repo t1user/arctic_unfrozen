@@ -1,5 +1,7 @@
 # Arctic Unfrozen
 
+[![Documentation Status](https://readthedocs.org/projects/arctic-unfrozen/badge/?version=latest)](https://arctic-unfrozen.readthedocs.io/en/latest/?badge=latest)
+
 Arctic is a MongoDB-backed time-series and dataframe database originally
 developed by Man Group. It provides namespaced libraries for storing and
 retrieving pandas objects, NumPy arrays, and other Python data. Its pluggable
@@ -9,9 +11,9 @@ data, and `ChunkStore` provides efficient range access to chunked datasets.
 Applications can also register custom library types when the built-in stores
 are not the right fit.
 
-Arctic Unfrozen aims to revive the established `Arctic` Python
-package, which was originally created by ManGroup and is currently in
-maintanance mode with very outdated stack. The original authors moved
+Arctic Unfrozen aims to revive the established `arctic` Python
+package, which was originally created by Man Group and is currently in
+maintenance mode with a very outdated stack. The original authors moved
 active development to
 [ArcticDB](https://github.com/man-group/ArcticDB), a ground-up
 successor with a new storage engine. ArcticDB is the appropriate
@@ -33,9 +35,11 @@ support should improve without breaking the existing interface or stored data.
 
 ## Documentation
 
-The original setup and usage guide remains available in
-[README-arctic.md](README-arctic.md). It is still the primary reference while
-the documentation is refreshed for Arctic Unfrozen.
+The maintained documentation is available on
+[Read the Docs](https://arctic-unfrozen.readthedocs.io/en/latest/). The
+original setup and usage guide remains available in
+[README-arctic.md](README-arctic.md) while the documentation is refreshed for
+Arctic Unfrozen.
 
 ## Development
 

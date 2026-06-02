@@ -16,7 +16,7 @@ a.initialize_library('vstore')
 lib = a[‘vstore’]
 ```
 
-At this point you have an empty VersionStore library. You do not need to specify the storage type because VersionStore is the default library type in Arctic. You can write data to it several ways. The most basic is to use the `write` method. [Write](https://github.com/manahl/arctic/blob/master/arctic/store/version_store.py#L563) takes the following arguments:
+At this point you have an empty VersionStore library. You do not need to specify the storage type because VersionStore is the default library type in Arctic. You can write data to it several ways. The most basic is to use the `write` method. [Write](https://github.com/t1user/arctic_unfrozen/blob/master/arctic/store/version_store.py#L563) takes the following arguments:
 
 `symbol, data, metadata=None, prune_previous_version=True, **kwargs`
 
@@ -85,7 +85,7 @@ symbol, as_of=None, date_range=None, from_version=None, allow_secondary=None, **
 * a version number (int)
 * a datetime (`datetime.datetime`)
 
-`date_range` lets you subset the data via an Arctic [DateRange](https://github.com/manahl/arctic/blob/master/arctic/date/_daterange.py#L15) object. `DateRange`s allows you to specify a date range ('2016-01-01', '2016-09-30') with start and end dates, as well as open ended ranges (None, '2016-09-30'). Ranges can be open at either end. `allow_secondary` lets you override the default behavior to allow or disallow reading from secondary members of the mongo cluster.
+`date_range` lets you subset the data via an Arctic [DateRange](https://github.com/t1user/arctic_unfrozen/blob/master/arctic/date/_daterange.py#L15) object. `DateRange`s allows you to specify a date range ('2016-01-01', '2016-09-30') with start and end dates, as well as open ended ranges (None, '2016-09-30'). Ranges can be open at either end. `allow_secondary` lets you override the default behavior to allow or disallow reading from secondary members of the mongo cluster.
 
 
 ```
@@ -114,7 +114,7 @@ date       id  data
 
 DateRange's only apply to pandas DataFrames, and the dataframe must have a datetime index present.
 
-Another way to write data is with the [`append`](https://github.com/manahl/arctic/blob/master/arctic/store/version_store.py#L473) method. `append` takes the following arguments:
+Another way to write data is with the [`append`](https://github.com/t1user/arctic_unfrozen/blob/master/arctic/store/version_store.py#L473) method. `append` takes the following arguments:
 
 ```
 symbol, data, metadata=None, prune_previous_version=True, upsert=True, **kwargs

@@ -1,6 +1,6 @@
 # Configuration variables
 
-Arctic has several tuning knobs under [arctic/_config.py](https://github.com/manahl/arctic/blob/master/arctic/_config.py) which affect the functionality of certain modules.
+Arctic has several tuning knobs under [arctic/_config.py](https://github.com/t1user/arctic_unfrozen/blob/master/arctic/_config.py) which affect the functionality of certain modules.
 
 Most of these variables are initialized via environment variables, which are explained in the rest of this section.
 
