@@ -15,21 +15,29 @@ def main() -> None:
     setup_logging()
 
     parser = optparse.OptionParser(usage=usage)
-    parser.add_option("--host", default='localhost', help="Hostname, or clustername. Default: localhost")
-    parser.add_option("--library", help="The name of the library. e.g. 'arctic_jblackburn.lib'")
+    parser.add_option(
+        "--host",
+        default="localhost",
+        help="Hostname, or clustername. Default: localhost",
+    )
+    parser.add_option(
+        "--library", help="The name of the library. e.g. 'arctic_jblackburn.lib'"
+    )
 
-    (opts, _) = parser.parse_args()
+    opts, _ = parser.parse_args()
 
-    if not opts.library or '.' not in opts.library:
-        parser.error('must specify the full path of the library e.g. arctic_jblackburn.lib!')
+    if not opts.library or "." not in opts.library:
+        parser.error(
+            "must specify the full path of the library e.g. arctic_jblackburn.lib!"
+        )
 
     print("Enabling-sharding: %s on mongo %s" % (opts.library, opts.host))
 
-    credentials = get_auth(opts.host, 'admin', 'admin')
+    credentials = get_auth(opts.host, "admin", "admin")
     c: Any = create_client(opts.host, credentials)
     store = Arctic(c)
     enable_sharding(store, opts.library)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

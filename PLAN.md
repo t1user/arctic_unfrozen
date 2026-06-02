@@ -17,10 +17,11 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
 - Move active project configuration into `pyproject.toml` where practical.
 - Retire stale CI/config files once their behavior is replaced or confirmed
   obsolete. Legacy CircleCI has been replaced by GitHub Actions.
-- Keep formatting changes narrow; avoid repository-wide reformatting until the
-  compatibility work is stable.
+- Preserve the one-time Black formatting baseline; keep later formatting changes
+  narrow and scoped to touched files.
 - Keep Black, flake8, and pycodestyle aligned on an 88-character line length.
-  Clean up the existing full-repository lint baseline incrementally.
+  Enforce Black formatting in CI and clean up the remaining full-repository lint
+  baseline incrementally.
 
 ## 3. Modernize Compatibility Hotspots
 

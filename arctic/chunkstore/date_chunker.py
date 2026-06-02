@@ -9,18 +9,18 @@ from ._chunker import Chunker, START, END
 
 
 class DateChunker(Chunker):
-    TYPE = 'date'
+    TYPE = "date"
 
     @staticmethod
     def _pandas_period_frequency(chunk_size: str) -> str:
-        if isinstance(chunk_size, str) and chunk_size.startswith('A'):
-            return 'Y' + chunk_size[1:]
+        if isinstance(chunk_size, str) and chunk_size.startswith("A"):
+            return "Y" + chunk_size[1:]
         return chunk_size
 
     def to_chunks(
         self,
         data: Any,
-        chunk_size: str = 'D',
+        chunk_size: str = "D",
         func: Callable[[Any], Any] | None = None,
         **kwargs: Any,
     ) -> Iterator[tuple[datetime.datetime, datetime.datetime, str, Any]]:
@@ -42,22 +42,24 @@ class DateChunker(Chunker):
                   chunk_size, dataframe/series)
         """
         df = data
-        if 'date' in df.index.names:
-            dates = df.index.get_level_values('date')
+        if "date" in df.index.names:
+            dates = df.index.get_level_values("date")
             if not df.index.is_monotonic_increasing:
                 df = df.sort_index()
-        elif 'date' in df.columns:
+        elif "date" in df.columns:
             dates = pd.DatetimeIndex(df.date)
             if not dates.is_monotonic_increasing:
                 # providing support for pandas 0.16.2 to 0.20.x
                 # neither sort method exists in both
                 try:
-                    df = df.sort_values('date')
+                    df = df.sort_values("date")
                 except AttributeError:
-                    df = df.sort(columns='date')
+                    df = df.sort(columns="date")
                 dates = pd.DatetimeIndex(df.date)
         else:
-            raise Exception("Data must be datetime indexed or have a column named 'date'")
+            raise Exception(
+                "Data must be datetime indexed or have a column named 'date'"
+            )
 
         period_obj = dates.to_period(self._pandas_period_frequency(chunk_size))
         period_obj_reduced = period_obj.drop_duplicates()
@@ -92,9 +94,11 @@ class DateChunker(Chunker):
         -------
         string
         """
-        return str(chunk_id).encode('ascii')
+        return str(chunk_id).encode("ascii")
 
-    def to_mongo(self, range_obj: DateRange | pd.DatetimeIndex | tuple[Any, ...]) -> dict[str, Any]:
+    def to_mongo(
+        self, range_obj: DateRange | pd.DatetimeIndex | tuple[Any, ...]
+    ) -> dict[str, Any]:
         """
         takes the range object used for this chunker type
         and converts it into a string that can be use for a
@@ -107,15 +111,22 @@ class DateChunker(Chunker):
         if isinstance(range_obj, (pd.DatetimeIndex, tuple)):
             range_obj = DateRange(range_obj[0], range_obj[-1])
         if range_obj.start and range_obj.end:
-            return {'$and': [{START: {'$lte': range_obj.end}}, {END: {'$gte': range_obj.start}}]}
+            return {
+                "$and": [
+                    {START: {"$lte": range_obj.end}},
+                    {END: {"$gte": range_obj.start}},
+                ]
+            }
         elif range_obj.start:
-            return {END: {'$gte': range_obj.start}}
+            return {END: {"$gte": range_obj.start}}
         elif range_obj.end:
-            return {START: {'$lte': range_obj.end}}
+            return {START: {"$lte": range_obj.end}}
         else:
             return {}
 
-    def filter(self, data: Any, range_obj: DateRange | pd.DatetimeIndex | tuple[Any, ...]) -> Any:
+    def filter(
+        self, data: Any, range_obj: DateRange | pd.DatetimeIndex | tuple[Any, ...]
+    ) -> Any:
         """
         ensures data is properly subset to the range in range_obj.
         (Depending on how the chunking is implemented, it might be possible
@@ -135,9 +146,9 @@ class DateChunker(Chunker):
         start = range_obj.start
         end = range_obj.end
 
-        if 'date' in data.index.names:
+        if "date" in data.index.names:
             return data[start:end]
-        elif 'date' in data.columns:
+        elif "date" in data.columns:
             if start and end:
                 return data[(data.date >= start) & (data.date <= end)]
             elif start:
@@ -149,7 +160,9 @@ class DateChunker(Chunker):
         else:
             return data
 
-    def exclude(self, data: Any, range_obj: DateRange | pd.DatetimeIndex | tuple[Any, ...]) -> Any:
+    def exclude(
+        self, data: Any, range_obj: DateRange | pd.DatetimeIndex | tuple[Any, ...]
+    ) -> Any:
         """
         Removes data within the bounds of the range object (inclusive)
 
@@ -159,9 +172,12 @@ class DateChunker(Chunker):
         """
         if isinstance(range_obj, (pd.DatetimeIndex, tuple)):
             range_obj = DateRange(range_obj[0], range_obj[-1])
-        if 'date' in data.index.names:
-            return data[(data.index.get_level_values('date') < range_obj.start) | (data.index.get_level_values('date') > range_obj.end)]
-        elif 'date' in data.columns:
+        if "date" in data.index.names:
+            return data[
+                (data.index.get_level_values("date") < range_obj.start)
+                | (data.index.get_level_values("date") > range_obj.end)
+            ]
+        elif "date" in data.columns:
             return data[(data.date < range_obj.start) | (data.date > range_obj.end)]
         else:
             return data

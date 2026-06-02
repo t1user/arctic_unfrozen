@@ -3,6 +3,7 @@ import optparse
 from .utils import setup_logging
 from ..arctic import Arctic
 
+
 def main() -> None:
     usage = """usage: %prog [options] [prefix ...]
 
@@ -15,9 +16,13 @@ def main() -> None:
     setup_logging()
 
     parser = optparse.OptionParser(usage=usage)
-    parser.add_option("--host", default='localhost', help="Hostname, or clustername. Default: localhost")
+    parser.add_option(
+        "--host",
+        default="localhost",
+        help="Hostname, or clustername. Default: localhost",
+    )
 
-    (opts, args) = parser.parse_args()
+    opts, args = parser.parse_args()
 
     store = Arctic(opts.host)
     for name in sorted(store.list_libraries()):
@@ -25,5 +30,5 @@ def main() -> None:
             print(name)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

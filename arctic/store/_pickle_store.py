@@ -14,10 +14,9 @@ from .._compression import decompress, compress_array
 from ..exceptions import UnsupportedPickleStoreVersion
 from .._config import SKIP_BSON_ENCODE_PICKLE_STORE, MAX_BSON_ENCODE
 
-
 # new versions of chunked pickled objects MUST begin with __chunked__
-_MAGIC_CHUNKED = '__chunked__'
-_MAGIC_CHUNKEDV2 = '__chunked__V2'
+_MAGIC_CHUNKED = "__chunked__"
+_MAGIC_CHUNKEDV2 = "__chunked__V2"
 _CHUNK_SIZE = 15 * 1024 * 1024  # 15MB
 _HARD_MAX_BSON_ENCODE = 10 * 1024 * 1024  # 10MB
 
@@ -26,16 +25,13 @@ _MAX_BSON_ENCODE = cast(int, MAX_BSON_ENCODE)
 
 
 class _PickleCollection(Protocol):
-    def find(self, *args: Any, **kwargs: Any) -> Iterable[dict[str, Any]]:
-        ...
+    def find(self, *args: Any, **kwargs: Any) -> Iterable[dict[str, Any]]: ...
 
-    def update_one(self, *args: Any, **kwargs: Any) -> Any:
-        ...
+    def update_one(self, *args: Any, **kwargs: Any) -> Any: ...
 
 
 class _ArcticLibrary(Protocol):
-    def get_top_level_collection(self) -> _PickleCollection:
-        ...
+    def get_top_level_collection(self) -> _PickleCollection: ...
 
 
 class PickleStore(object):
@@ -46,35 +42,58 @@ class PickleStore(object):
 
     def get_info(self, _version: object) -> dict[str, str]:
         return {
-            'type': 'blob',
-            'handler': self.__class__.__name__,
+            "type": "blob",
+            "handler": self.__class__.__name__,
         }
 
-    def read(self, mongoose_lib: _ArcticLibrary, version: MutableMapping[str, Any], symbol: Any, **_kwargs: Any) -> Any:
+    def read(
+        self,
+        mongoose_lib: _ArcticLibrary,
+        version: MutableMapping[str, Any],
+        symbol: Any,
+        **_kwargs: Any,
+    ) -> Any:
         blob = version.get("blob")
         if blob is not None:
             if blob == _MAGIC_CHUNKEDV2:
                 collection = mongoose_lib.get_top_level_collection()
-                data = b''.join(decompress(x['data']) for x in sorted(
-                    collection.find({'symbol': symbol, 'parent': version_base_or_id(version)}),
-                    key=itemgetter('segment')))
+                data = b"".join(
+                    decompress(x["data"])
+                    for x in sorted(
+                        collection.find(
+                            {"symbol": symbol, "parent": version_base_or_id(version)}
+                        ),
+                        key=itemgetter("segment"),
+                    )
+                )
             elif blob == _MAGIC_CHUNKED:
                 collection = mongoose_lib.get_top_level_collection()
-                data = b''.join(x['data'] for x in sorted(
-                    collection.find({'symbol': symbol, 'parent': version_base_or_id(version)}),
-                    key=itemgetter('segment')))
+                data = b"".join(
+                    x["data"]
+                    for x in sorted(
+                        collection.find(
+                            {"symbol": symbol, "parent": version_base_or_id(version)}
+                        ),
+                        key=itemgetter("segment"),
+                    )
+                )
                 data = decompress(data)
             else:
-                if blob[:len(_MAGIC_CHUNKED)] == _MAGIC_CHUNKED:
-                    logger.error("Data was written by unsupported version of pickle store for symbol %s. Upgrade Arctic and try again" % symbol)
-                    raise UnsupportedPickleStoreVersion("Data was written by unsupported version of pickle store")
+                if blob[: len(_MAGIC_CHUNKED)] == _MAGIC_CHUNKED:
+                    logger.error(
+                        "Data was written by unsupported version of pickle store for symbol %s. Upgrade Arctic and try again"
+                        % symbol
+                    )
+                    raise UnsupportedPickleStoreVersion(
+                        "Data was written by unsupported version of pickle store"
+                    )
                 try:
                     data = decompress(blob)
                 except:
                     logger.error("Failed to read symbol %s" % symbol)
 
             return pickle_compat_load(io.BytesIO(data))
-        return version['data']
+        return version["data"]
 
     @staticmethod
     def read_options() -> list[str]:
@@ -94,9 +113,9 @@ class PickleStore(object):
         if not SKIP_BSON_ENCODE_PICKLE_STORE:
             try:
                 # If it's encodeable, then ship it
-                b = bson.BSON.encode({'data': item})
+                b = bson.BSON.encode({"data": item})
                 if len(b) < min(_MAX_BSON_ENCODE, _HARD_MAX_BSON_ENCODE):
-                    version['data'] = item
+                    version["data"] = item
                     return
             except InvalidDocument:
                 pass
@@ -104,16 +123,23 @@ class PickleStore(object):
         # Pickle, chunk and store the data
         collection = arctic_lib.get_top_level_collection()
         # Try to pickle it. This is best effort
-        version['blob'] = _MAGIC_CHUNKEDV2
+        version["blob"] = _MAGIC_CHUNKEDV2
         pickled = pickle.dumps(item, protocol=pickle.HIGHEST_PROTOCOL)
 
-        data = compress_array([pickled[i * _CHUNK_SIZE: (i + 1) * _CHUNK_SIZE] for i in range(int(len(pickled) / _CHUNK_SIZE + 1))])
+        data = compress_array(
+            [
+                pickled[i * _CHUNK_SIZE : (i + 1) * _CHUNK_SIZE]
+                for i in range(int(len(pickled) / _CHUNK_SIZE + 1))
+            ]
+        )
 
         for seg, d in enumerate(data):
-            segment: dict[str, Any] = {'data': Binary(d)}
-            segment['segment'] = seg
+            segment: dict[str, Any] = {"data": Binary(d)}
+            segment["segment"] = seg
             seg += 1
             sha = checksum(symbol, segment)
-            collection.update_one({'symbol': symbol, 'sha': sha},
-                                  {'$set': segment, '$addToSet': {'parent': version['_id']}},
-                                  upsert=True)
+            collection.update_one(
+                {"symbol": symbol, "sha": sha},
+                {"$set": segment, "$addToSet": {"parent": version["_id"]}},
+                upsert=True,
+            )

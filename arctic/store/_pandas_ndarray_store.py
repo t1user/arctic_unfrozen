@@ -15,18 +15,20 @@ from ..exceptions import ArcticException
 
 log = logging.getLogger(__name__)
 
-DTN64_DTYPE = 'datetime64[ns]'
+DTN64_DTYPE = "datetime64[ns]"
 
-INDEX_DTYPE = [('datetime', DTN64_DTYPE), ('index', 'i8')]
+INDEX_DTYPE = [("datetime", DTN64_DTYPE), ("index", "i8")]
 
 
 def _dtype_needs_serializability_check(dtype: Any) -> bool:
-    return not hasattr(dtype, 'hasobject') or dtype.hasobject
+    return not hasattr(dtype, "hasobject") or dtype.hasobject
 
 
 class PandasStore(NdarrayStore):
 
-    def _segment_index(self, recarr: Any, existing_index: Any, start: int, new_segments: Any) -> Binary | None:
+    def _segment_index(
+        self, recarr: Any, existing_index: Any, start: int, new_segments: Any
+    ) -> Binary | None:
         """
         Generate index of datetime64 -> item offset.
 
@@ -48,24 +50,36 @@ class PandasStore(NdarrayStore):
         idx_col = self._datetime64_index(recarr)
         # if one exists let's create the index on it
         if idx_col is not None:
-            new_segments = np.array(new_segments, dtype='i8')
+            new_segments = np.array(new_segments, dtype="i8")
             last_rows = recarr[new_segments - start]
             # create numpy index
-            index: Any = np.rec.fromarrays([last_rows[idx_col]] + [new_segments, ], dtype=INDEX_DTYPE)
+            index: Any = np.rec.fromarrays(
+                [last_rows[idx_col]]
+                + [
+                    new_segments,
+                ],
+                dtype=INDEX_DTYPE,
+            )
             # append to existing index if exists
             if existing_index:
                 # existing_index_arr is read-only but it's never written to
-                existing_index_arr = np.frombuffer(decompress(existing_index), dtype=INDEX_DTYPE)
+                existing_index_arr = np.frombuffer(
+                    decompress(existing_index), dtype=INDEX_DTYPE
+                )
                 if start > 0:
-                    existing_index_arr = existing_index_arr[existing_index_arr['index'] < start]
+                    existing_index_arr = existing_index_arr[
+                        existing_index_arr["index"] < start
+                    ]
                 index = np.concatenate((existing_index_arr, index))
             return Binary(compress(index.tobytes()))
         elif existing_index:
-            raise ArcticException("Could not find datetime64 index in item but existing data contains one")
+            raise ArcticException(
+                "Could not find datetime64 index in item but existing data contains one"
+            )
         return None
 
     def _datetime64_index(self, recarr: Any) -> Any:
-        """ Given a np.recarray find the first datetime64 column """
+        """Given a np.recarray find the first datetime64 column"""
         # TODO: Handle multi-indexes
         names = recarr.dtype.names
         for name in names:
@@ -75,17 +89,24 @@ class PandasStore(NdarrayStore):
 
     @staticmethod
     def read_options() -> list[str]:
-        return ['date_range']
+        return ["date_range"]
 
     def _index_range(
-        self, version: Any, symbol: Any, from_version: Any = None, date_range: Any = None, **kwargs: Any
+        self,
+        version: Any,
+        symbol: Any,
+        from_version: Any = None,
+        date_range: Any = None,
+        **kwargs: Any,
     ) -> Any:
-        """ Given a version, read the segment_index and return the chunks associated
+        """Given a version, read the segment_index and return the chunks associated
         with the date_range. As the segment index is (id -> last datetime)
-        we need to take care in choosing the correct chunks. """
-        if date_range and 'segment_index' in version:
+        we need to take care in choosing the correct chunks."""
+        if date_range and "segment_index" in version:
             # index is read-only but it's never written to
-            index = np.frombuffer(decompress(version['segment_index']), dtype=INDEX_DTYPE)
+            index = np.frombuffer(
+                decompress(version["segment_index"]), dtype=INDEX_DTYPE
+            )
             dtcol = self._datetime64_index(index)
             if dtcol and len(index):
                 dts = index[dtcol]
@@ -93,13 +114,15 @@ class PandasStore(NdarrayStore):
                 if start > dts[-1]:
                     return -1, -1
                 idxstart = min(np.searchsorted(dts, start), len(dts) - 1)
-                idxend = min(np.searchsorted(dts, end, side='right'), len(dts) - 1)
-                return int(index['index'][idxstart]), int(index['index'][idxend] + 1)
-        return super(PandasStore, self)._index_range(version, symbol, from_version=from_version, **kwargs)
+                idxend = min(np.searchsorted(dts, end, side="right"), len(dts) - 1)
+                return int(index["index"][idxstart]), int(index["index"][idxend] + 1)
+        return super(PandasStore, self)._index_range(
+            version, symbol, from_version=from_version, **kwargs
+        )
 
     def _daterange(self, recarr: Any, date_range: Any) -> Any:
-        """ Given a recarr, slice out the given artic.date.DateRange if a
-        datetime64 index exists """
+        """Given a recarr, slice out the given artic.date.DateRange if a
+        datetime64 index exists"""
         idx = self._datetime64_index(recarr)
         if idx and len(recarr):
             dts = recarr[idx]
@@ -118,8 +141,14 @@ class PandasStore(NdarrayStore):
         date_range: Any = None,
         **kwargs: Any,
     ) -> Any:
-        item = super(PandasStore, self).read(arctic_lib, version, symbol, read_preference,
-                                             date_range=date_range, **kwargs)
+        item = super(PandasStore, self).read(
+            arctic_lib,
+            version,
+            symbol,
+            read_preference,
+            date_range=date_range,
+            **kwargs,
+        )
         if date_range:
             item = self._daterange(item, date_range)
         return item
@@ -130,9 +159,11 @@ class PandasStore(NdarrayStore):
         and returns it to the user in a dictionary
         """
         ret = super(PandasStore, self).get_info(version)
-        ret['col_names'] = {k: v for k, v in version['dtype_metadata'].items() if k != 'index_names'}
-        ret['handler'] = self.__class__.__name__
-        ret['dtype'] = ast.literal_eval(version['dtype'])
+        ret["col_names"] = {
+            k: v for k, v in version["dtype_metadata"].items() if k != "index_names"
+        }
+        ret["handler"] = self.__class__.__name__
+        ret["dtype"] = ast.literal_eval(version["dtype"])
         return ret
 
 
@@ -157,7 +188,7 @@ def _assert_no_timezone(date_range: Any) -> None:
 
 
 class PandasSeriesStore(PandasStore):
-    TYPE = 'pandasseries'
+    TYPE = "pandasseries"
     SERIALIZER = SeriesSerializer()
 
     @staticmethod
@@ -167,8 +198,12 @@ class PandasSeriesStore(PandasStore):
     def can_write(self, version: Any, symbol: str, data: Any) -> bool:
         if self.can_write_type(data):
             # Series has always a single-column
-            if _dtype_needs_serializability_check(data.dtype) or _dtype_needs_serializability_check(data.index.dtype):
-                return self.SERIALIZER.can_convert_to_records_without_objects(data, symbol)
+            if _dtype_needs_serializability_check(
+                data.dtype
+            ) or _dtype_needs_serializability_check(data.index.dtype):
+                return self.SERIALIZER.can_convert_to_records_without_objects(
+                    data, symbol
+                )
             return True
         return False
 
@@ -182,7 +217,9 @@ class PandasSeriesStore(PandasStore):
         dtype: Any = None,
     ) -> Any:
         item, md = self.SERIALIZER.serialize(item)
-        super(PandasSeriesStore, self).write(arctic_lib, version, symbol, item, previous_version, dtype=md)
+        super(PandasSeriesStore, self).write(
+            arctic_lib, version, symbol, item, previous_version, dtype=md
+        )
 
     def append(
         self,
@@ -197,7 +234,14 @@ class PandasSeriesStore(PandasStore):
     ) -> Any:
         item, md = self.SERIALIZER.serialize(item)
         super(PandasSeriesStore, self).append(
-            arctic_lib, version, symbol, item, previous_version, dtype=md, dirty_append=dirty_append, **kwargs
+            arctic_lib,
+            version,
+            symbol,
+            item,
+            previous_version,
+            dtype=md,
+            dirty_append=dirty_append,
+            **kwargs,
         )
 
     @staticmethod
@@ -214,15 +258,24 @@ class PandasSeriesStore(PandasStore):
         **kwargs: Any,
     ) -> Series:
         item = super(PandasSeriesStore, self).read(
-            arctic_lib, version, symbol, read_preference, date_range=date_range, **kwargs
+            arctic_lib,
+            version,
+            symbol,
+            read_preference,
+            date_range=date_range,
+            **kwargs,
         )
         # Try to check if force_bytes_to_unicode is set in kwargs else use the config value (which defaults to False)
-        force_bytes_to_unicode = kwargs.get('force_bytes_to_unicode', FORCE_BYTES_TO_UNICODE)
-        return self.SERIALIZER.deserialize(item, force_bytes_to_unicode=force_bytes_to_unicode)
+        force_bytes_to_unicode = kwargs.get(
+            "force_bytes_to_unicode", FORCE_BYTES_TO_UNICODE
+        )
+        return self.SERIALIZER.deserialize(
+            item, force_bytes_to_unicode=force_bytes_to_unicode
+        )
 
 
 class PandasDataFrameStore(PandasStore):
-    TYPE = 'pandasdf'
+    TYPE = "pandasdf"
     SERIALIZER = DataFrameSerializer()
 
     @staticmethod
@@ -231,9 +284,13 @@ class PandasDataFrameStore(PandasStore):
 
     def can_write(self, version: Any, symbol: str, data: Any) -> bool:
         if self.can_write_type(data):
-            if any(_dtype_needs_serializability_check(dtype) for dtype in data.dtypes.values) or \
-                    _dtype_needs_serializability_check(data.index.dtype):
-                return self.SERIALIZER.can_convert_to_records_without_objects(data, symbol)
+            if any(
+                _dtype_needs_serializability_check(dtype)
+                for dtype in data.dtypes.values
+            ) or _dtype_needs_serializability_check(data.index.dtype):
+                return self.SERIALIZER.can_convert_to_records_without_objects(
+                    data, symbol
+                )
             return True
         return False
 
@@ -247,7 +304,9 @@ class PandasDataFrameStore(PandasStore):
         dtype: Any = None,
     ) -> Any:
         item, md = self.SERIALIZER.serialize(item)
-        super(PandasDataFrameStore, self).write(arctic_lib, version, symbol, item, previous_version, dtype=md)
+        super(PandasDataFrameStore, self).write(
+            arctic_lib, version, symbol, item, previous_version, dtype=md
+        )
 
     def append(
         self,
@@ -262,7 +321,14 @@ class PandasDataFrameStore(PandasStore):
     ) -> Any:
         item, md = self.SERIALIZER.serialize(item)
         super(PandasDataFrameStore, self).append(
-            arctic_lib, version, symbol, item, previous_version, dtype=md, dirty_append=dirty_append, **kwargs
+            arctic_lib,
+            version,
+            symbol,
+            item,
+            previous_version,
+            dtype=md,
+            dirty_append=dirty_append,
+            **kwargs,
         )
 
     def read(
@@ -275,11 +341,20 @@ class PandasDataFrameStore(PandasStore):
         **kwargs: Any,
     ) -> DataFrame:
         item = super(PandasDataFrameStore, self).read(
-            arctic_lib, version, symbol, read_preference, date_range=date_range, **kwargs
+            arctic_lib,
+            version,
+            symbol,
+            read_preference,
+            date_range=date_range,
+            **kwargs,
         )
         # Try to check if force_bytes_to_unicode is set in kwargs else use the config value (which defaults to False)
-        force_bytes_to_unicode = kwargs.get('force_bytes_to_unicode', FORCE_BYTES_TO_UNICODE)
-        return self.SERIALIZER.deserialize(item, force_bytes_to_unicode=force_bytes_to_unicode)
+        force_bytes_to_unicode = kwargs.get(
+            "force_bytes_to_unicode", FORCE_BYTES_TO_UNICODE
+        )
+        return self.SERIALIZER.deserialize(
+            item, force_bytes_to_unicode=force_bytes_to_unicode
+        )
 
     @staticmethod
     def read_options() -> list[str]:

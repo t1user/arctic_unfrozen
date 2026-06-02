@@ -20,20 +20,33 @@ logger = logging.getLogger(__name__)
 USER = pwd.getpwuid(os.getuid())[0]
 
 
-def copy_symbols_helper(src: Any, dest: Any, log: str, force: bool, splice: bool) -> Callable[[Sequence[str]], None]:
+def copy_symbols_helper(
+    src: Any, dest: Any, log: str, force: bool, splice: bool
+) -> Callable[[Sequence[str]], None]:
     def _copy_symbol(symbols: Sequence[str]) -> None:
         for symbol in symbols:
             with ArcticTransaction(dest, symbol, USER, log) as mt:
                 existing_data = dest.has_symbol(symbol)
                 if existing_data:
                     if force:
-                        logger.warn("Symbol: %s already exists in destination, OVERWRITING" % symbol)
+                        logger.warn(
+                            "Symbol: %s already exists in destination, OVERWRITING"
+                            % symbol
+                        )
                     elif splice:
-                        logger.warn("Symbol: %s already exists in destination, splicing in new data" % symbol)
+                        logger.warn(
+                            "Symbol: %s already exists in destination, splicing in new data"
+                            % symbol
+                        )
                     else:
-                        logger.warn("Symbol: {} already exists in {}@{}, use --force to overwrite or --splice to join "
-                                    "with existing data".format(symbol, _get_host(dest).get('l'),
-                                                                _get_host(dest).get('mhost')))
+                        logger.warn(
+                            "Symbol: {} already exists in {}@{}, use --force to overwrite or --splice to join "
+                            "with existing data".format(
+                                symbol,
+                                _get_host(dest).get("l"),
+                                _get_host(dest).get("mhost"),
+                            )
+                        )
                         continue
 
                 version = src.read(symbol)
@@ -43,14 +56,23 @@ def copy_symbols_helper(src: Any, dest: Any, log: str, force: bool, splice: bool
                     original_data = dest.read(symbol).data
                     preserve_start_range = cast(
                         DateRange,
-                        to_pandas_closed_closed(DateRange(None, new_data.index[0].to_pydatetime(),
-                                                          interval=CLOSED_OPEN)),
+                        to_pandas_closed_closed(
+                            DateRange(
+                                None,
+                                new_data.index[0].to_pydatetime(),
+                                interval=CLOSED_OPEN,
+                            )
+                        ),
                     )
                     preserve_end_range = cast(
                         DateRange,
-                        to_pandas_closed_closed(DateRange(new_data.index[-1].to_pydatetime(),
-                                                          None,
-                                                          interval=OPEN_CLOSED)),
+                        to_pandas_closed_closed(
+                            DateRange(
+                                new_data.index[-1].to_pydatetime(),
+                                None,
+                                interval=OPEN_CLOSED,
+                            )
+                        ),
                     )
                     preserve_start = preserve_start_range.end
                     preserve_end = preserve_end_range.start
@@ -63,6 +85,7 @@ def copy_symbols_helper(src: Any, dest: Any, log: str, force: bool, splice: bool
                     new_data = pd.concat([before, new_data, after])
 
                 mt.write(symbol, new_data, metadata=version.metadata)
+
     return _copy_symbol
 
 
@@ -75,13 +98,34 @@ def main() -> None:
     """
     setup_logging()
     p = argparse.ArgumentParser(usage=usage)
-    p.add_argument("--src", required=True, help="Source MongoDB like: library@hostname:port")
-    p.add_argument("--dest", required=True, help="Destination MongoDB like: library@hostname:port")
+    p.add_argument(
+        "--src", required=True, help="Source MongoDB like: library@hostname:port"
+    )
+    p.add_argument(
+        "--dest", required=True, help="Destination MongoDB like: library@hostname:port"
+    )
     p.add_argument("--log", required=True, help="Data CR")
-    p.add_argument("--force", default=False, action='store_true', help="Force overwrite of existing data for symbol.")
-    p.add_argument("--splice", default=False, action='store_true', help="Keep existing data before and after the new data.")
-    p.add_argument("--parallel", default=1, type=int, help="Number of imports to run in parallel.")
-    p.add_argument("symbols", nargs='+', type=str, help="List of symbol regexes to copy from source to dest.")
+    p.add_argument(
+        "--force",
+        default=False,
+        action="store_true",
+        help="Force overwrite of existing data for symbol.",
+    )
+    p.add_argument(
+        "--splice",
+        default=False,
+        action="store_true",
+        help="Keep existing data before and after the new data.",
+    )
+    p.add_argument(
+        "--parallel", default=1, type=int, help="Number of imports to run in parallel."
+    )
+    p.add_argument(
+        "symbols",
+        nargs="+",
+        type=str,
+        help="List of symbol regexes to copy from source to dest.",
+    )
 
     opts = p.parse_args()
 
@@ -110,13 +154,15 @@ def main() -> None:
         # Break the jobs into chunks for multiprocessing
         chunk_size = len(required_symbols) // opts.parallel
         chunk_size = max(chunk_size, 1)
-        chunks = [required_symbols[offs:offs + chunk_size] for offs in
-                  range(0, len(required_symbols), chunk_size)]
+        chunks = [
+            required_symbols[offs : offs + chunk_size]
+            for offs in range(0, len(required_symbols), chunk_size)
+        ]
         assert sum(len(x) for x in chunks) == len(required_symbols)
         pool.apply(copy_symbol, chunks)
     else:
         copy_symbol(required_symbols)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

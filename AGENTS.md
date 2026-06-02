@@ -22,6 +22,7 @@ This repository contains Arctic Unfrozen, the maintained distribution of the leg
 - `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 through 3.13.
 - `python -m pytest`: run the full local suite, including MongoDB-backed integration tests. This took about 8 minutes on Python 3.13 in May 2026 and requires a reachable MongoDB test instance or local `mongod`.
 - `python -m nox -s unit`: run the unit-test CI session on the active Python.
+- `python -m nox -s black`: check repository formatting with Black using the same command as GitHub Actions.
 - `python -m nox -s mypy`: run the strict type-checking CI session for the `arctic` package. It rejects untyped definitions, untyped calls, bare generics, implicit optionals, and implicit `Any` returns.
 - `python -m nox -s integration`: run the MongoDB-backed integration-test CI session on the active Python. Without `ARCTIC_TEST_MONGO_HOST`, this starts a local `mongod` if available.
 - `docker run --rm -d --name arctic-unfrozen-test --ulimit nofile=64000:64000 -p 127.0.0.1:27018:27017 mongodb/mongodb-community-server:8.3.2-ubi9-slim`: start an isolated ephemeral MongoDB container for local integration tests. Run tests with `ARCTIC_TEST_MONGO_HOST=localhost:27018 python -m nox -s integration`, then stop it with `docker stop arctic-unfrozen-test`.
@@ -54,7 +55,7 @@ Use Black's standard formatting defaults, including its 88-character line length
 
 Use `pytest`. Put fast isolated tests in `tests/unit/` and MongoDB-backed or end-to-end coverage in `tests/integration/`. Name test files `test_*.py` and test functions `test_*`. Add focused regression tests near the affected module, for example `tests/unit/chunkstore/` for `arctic/chunkstore/` changes. If an integration test needs external services, state that clearly in the PR.
 
-GitHub Actions currently runs `nox` mypy, unit, integration-smoke, and full MongoDB-backed integration sessions. Unit and integration jobs run on Python 3.10 through 3.13; mypy runs once against the configured Python 3.10 target. MongoDB jobs use MongoDB 8.3.2 through a GitHub Actions service container. Full integration is blocking in CI, so keep local verification focused before pushing. Integration tests erase every non-system database on the configured server. Point `ARCTIC_TEST_MONGO_HOST` only at a disposable test instance, never at a live MongoDB server.
+GitHub Actions currently runs `nox` Black, mypy, unit, integration-smoke, and full MongoDB-backed integration sessions. Black and mypy run once; unit and integration jobs run on Python 3.10 through 3.13. MongoDB jobs use MongoDB 8.3.2 through a GitHub Actions service container. Full integration is blocking in CI, so keep local verification focused before pushing. Integration tests erase every non-system database on the configured server. Point `ARCTIC_TEST_MONGO_HOST` only at a disposable test instance, never at a live MongoDB server.
 
 Documentation is published at `https://arctic-unfrozen.readthedocs.io/`. GitHub Actions and Read the Docs both run a strict MkDocs build using the pinned dependencies in `docs/requirements.txt`.
 

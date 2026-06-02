@@ -37,6 +37,7 @@ distribution onto a current Python and MongoDB stack.
  * Tooling: consolidate active pytest, Black, flake8, and mypy configuration in `pyproject.toml`.
  * Tooling: use Black's standard 88-character line length for newly formatted code.
  * Tooling: align active flake8 and pycodestyle configuration with Black while retaining temporary legacy lint exceptions.
+ * Tooling: enforce repository formatting with a blocking Black nox session in GitHub Actions.
  * Tooling: simplify strict mypy enforcement now that the maintained `arctic` package is annotated.
 
 #### Typing and maintenance policy

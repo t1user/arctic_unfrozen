@@ -1,4 +1,4 @@
-""" The Arctic TimeSeries and Tick store."""
+"""The Arctic TimeSeries and Tick store."""
 
 import pandas
 
@@ -14,9 +14,10 @@ from .store.version_store import register_versioned_storage, register_version
 
 try:
     from pkg_resources import get_distribution
+
     str_version = get_distribution(__name__).version.strip()
-    int_parts = tuple(int(x) for x in str_version.split('.'))
-    num_version = sum([1000 ** i * v for i, v in enumerate(reversed(int_parts))])
+    int_parts = tuple(int(x) for x in str_version.split("."))
+    num_version = sum([1000**i * v for i, v in enumerate(reversed(int_parts))])
     register_version(str_version, num_version)
 except Exception:
     __version__ = None

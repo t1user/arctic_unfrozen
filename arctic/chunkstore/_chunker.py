@@ -1,14 +1,15 @@
 from collections.abc import Iterator
 from typing import Any
 
-
-START = 's'
-END = 'e'
+START = "s"
+END = "e"
 
 
 class Chunker(object):
 
-    def to_chunks(self, data: Any, **kwargs: Any) -> Iterator[tuple[Any, Any, Any, Any]]:
+    def to_chunks(
+        self, data: Any, **kwargs: Any
+    ) -> Iterator[tuple[Any, Any, Any, Any]]:
         """
         Chunks data. keyword args passed in from write API
 

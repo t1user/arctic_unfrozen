@@ -3,10 +3,12 @@ from typing import Any
 
 
 class Intervals(Enum):
-    (OPEN_CLOSED, CLOSED_OPEN, OPEN_OPEN, CLOSED_CLOSED) = range(1101, 1105)
+    OPEN_CLOSED, CLOSED_OPEN, OPEN_OPEN, CLOSED_CLOSED = range(1101, 1105)
 
 
-(OPEN_CLOSED, CLOSED_OPEN, OPEN_OPEN, CLOSED_CLOSED) = INTERVALS = Intervals.__members__.values()
+OPEN_CLOSED, CLOSED_OPEN, OPEN_OPEN, CLOSED_CLOSED = INTERVALS = (
+    Intervals.__members__.values()
+)
 
 
 class GeneralSlice(object):
@@ -27,7 +29,13 @@ class GeneralSlice(object):
     =====  ====  ============================  ===============================
     """
 
-    def __init__(self, start: Any, end: Any, step: Any = None, interval: Intervals = CLOSED_CLOSED) -> None:
+    def __init__(
+        self,
+        start: Any,
+        end: Any,
+        step: Any = None,
+        interval: Intervals = CLOSED_CLOSED,
+    ) -> None:
         self.start = start
         self.end = end
         self.step = step
