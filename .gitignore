@@ -43,6 +43,8 @@ ENV/
 # IDEs and editor state
 .idea/
 .vscode/
+.#*
+[#]*[#]
 *.sw[op]
 *~
 .DS_Store

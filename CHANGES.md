@@ -9,6 +9,7 @@ distribution onto a current Python and MongoDB stack.
 #### Project and packaging
  * Project: rename the maintained distribution to `arctic_unfrozen`. Existing applications continue to import `arctic`.
  * Packaging: move active package metadata and dependency declarations into `pyproject.toml`.
+ * Packaging: classify the distribution for financial-industry users on package indexes.
  * Docs: explain the relationship to Man Group's ArcticDB successor and document why MongoDB-backed Arctic remains useful for existing deployments.
  * Docs: retain the original Arctic documentation as the primary reference while it is refreshed.
  * Docs: publish maintained documentation at Read the Docs and validate strict MkDocs builds in CI.
@@ -34,6 +35,9 @@ distribution onto a current Python and MongoDB stack.
  * CI: use isolated MongoDB 8.3.2 service containers with a health check and `nofile=64000:64000` limit for WiredTiger.
  * Development: document an ephemeral Docker MongoDB workflow for local integration tests. Integration fixtures erase non-system databases, so they must never target a live server.
  * Tooling: consolidate active pytest, Black, flake8, and mypy configuration in `pyproject.toml`.
+ * Tooling: use Black's standard 88-character line length for newly formatted code.
+ * Tooling: align active flake8 and pycodestyle configuration with Black while retaining temporary legacy lint exceptions.
+ * Tooling: simplify strict mypy enforcement now that the maintained `arctic` package is annotated.
 
 #### Typing and maintenance policy
  * Typing: annotate the maintained `arctic` package and add mypy as a blocking CI check.

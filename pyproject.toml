@@ -13,9 +13,10 @@ authors = [
   {name = "Man AHL Technology", email = "arctic@man.com"},
   {name="t1user", email = "enterdragon@duck.com"},
 ]
-keywords = ["ahl", "keyvalue", "tickstore", "mongo", "timeseries"]
+keywords = ["ahl", "finance", "keyvalue", "market-data", "mongo", "timeseries", "tickstore", "trading"]
 classifiers = [
     "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -26,6 +27,7 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Topic :: Database",
     "Topic :: Database :: Front-Ends",
+    "Topic :: Office/Business :: Financial",
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
@@ -86,24 +88,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 
 [tool.black]
-line-length = 120
 target-version = ["py310"]
-
-[tool.flake8]
-extend-ignore = ["E122", "E126", "E501", "E731", "W503", "E722", "W504"]
-exclude = [
-    ".eggs",
-    ".git",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".nox",
-    ".tox",
-    ".venv",
-    "build",
-    "dist",
-    "htmlcov",
-]
 
 [tool.mypy]
 python_version = "3.10"
@@ -111,72 +96,7 @@ packages = ["arctic"]
 ignore_missing_imports = true
 disallow_any_generics = true
 disallow_untyped_calls = true
+disallow_untyped_defs = true
 no_implicit_optional = true
 warn_unused_ignores = true
 warn_return_any = true
-
-[[tool.mypy.overrides]]
-module = [
-    "arctic",
-    "arctic.arctic",
-    "arctic._config",
-    "arctic.chunkstore._chunker",
-    "arctic.chunkstore",
-    "arctic.chunkstore.chunkstore",
-    "arctic.chunkstore.date_chunker",
-    "arctic.chunkstore.passthrough_chunker",
-    "arctic.chunkstore.tools",
-    "arctic.chunkstore.tools.tools",
-    "arctic.chunkstore.utils",
-    "arctic._cache",
-    "arctic._compression",
-    "arctic._util",
-    "arctic.asynchronous._workers_pool",
-    "arctic.asynchronous.async_arctic",
-    "arctic.auth",
-    "arctic.asynchronous.async_utils",
-    "arctic.asynchronous",
-    "arctic.date",
-    "arctic.date._daterange",
-    "arctic.date._generalslice",
-    "arctic.date._mktz",
-    "arctic.date._parse",
-    "arctic.date._util",
-    "arctic.decorators",
-    "arctic.exceptions",
-    "arctic.fixtures",
-    "arctic.fixtures.arctic",
-    "arctic.hooks",
-    "arctic.hosts",
-    "arctic.multi_index",
-    "arctic.scripts.arctic_copy_data",
-    "arctic.scripts.arctic_create_user",
-    "arctic.scripts.arctic_delete_library",
-    "arctic.scripts.arctic_enable_sharding",
-    "arctic.scripts.arctic_fsck",
-    "arctic.scripts.arctic_init_library",
-    "arctic.scripts.arctic_list_libraries",
-    "arctic.scripts.arctic_prune_versions",
-    "arctic.scripts.utils",
-    "arctic.scripts",
-    "arctic.serialization",
-    "arctic.serialization.incremental",
-    "arctic.serialization.numpy_arrays",
-    "arctic.serialization.numpy_records",
-    "arctic.serialization._serializer",
-    "arctic.store",
-    "arctic.store.audit",
-    "arctic.store.bitemporal_store",
-    "arctic.store.bson_store",
-    "arctic.store.metadata_store",
-    "arctic.store._ndarray_store",
-    "arctic.store._pandas_ndarray_store",
-    "arctic.store._pickle_store",
-    "arctic.store._version_store_utils",
-    "arctic.store.version_store",
-    "arctic.store.versioned_item",
-    "arctic.tickstore",
-    "arctic.tickstore.tickstore",
-    "arctic.tickstore.toplevel",
-]
-disallow_untyped_defs = true

@@ -28,7 +28,7 @@ This repository contains Arctic Unfrozen, the maintained distribution of the leg
 - `python -m nox -s unit_matrix integration_matrix`: run the full local Python matrix only before high-risk pushes or when explicitly requested. It is too slow for routine edit cycles.
 - `python -m pytest tests/unit/test_auth.py`: run a focused test file or directory.
 - `git diff --check`: catch whitespace and conflict-marker issues before committing.
-- `pycodestyle arctic tests`: check style using the ignore rules in `setup.cfg` when style-sensitive files are changed. Prefer focused checks during compatibility work.
+- `pycodestyle path/to/touched_file.py`: check style using the ignore rules in `setup.cfg` when style-sensitive files are changed. Keep checks focused until legacy style debt is cleaned up.
 - `python -m mkdocs build --strict`: build documentation locally and reject warnings when docs are changed.
 
 Use a virtualenv for local work, for example `virtualenv .venv -p python3` and `source .venv/bin/activate`.
@@ -46,7 +46,9 @@ Use the narrowest useful verification first, then escalate based on risk and fai
 
 ## Coding Style & Naming Conventions
 
-Prefer minimal, targeted changes that preserve the existing architecture. Follow the surrounding Python style: four-space indentation, explicit imports, readable functions, and descriptive snake_case names for modules, functions, and variables. Classes use `CamelCase`; constants use `UPPER_SNAKE_CASE`. Keep public APIs stable unless the change explicitly requires an API break. Run `pycodestyle` before submitting; avoid broad formatting-only diffs in legacy files.
+Prefer minimal, targeted changes that preserve the existing architecture. Follow the surrounding Python style: four-space indentation, explicit imports, readable functions, and descriptive snake_case names for modules, functions, and variables. Classes use `CamelCase`; constants use `UPPER_SNAKE_CASE`. Keep public APIs stable unless the change explicitly requires an API break. Run Black and pycodestyle against touched files before submitting; avoid broad formatting-only diffs in legacy files.
+
+Use Black's standard formatting defaults, including its 88-character line length. Apply formatting narrowly to touched code; do not reformat legacy modules solely to normalize style.
 
 ## Testing Guidelines
 

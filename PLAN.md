@@ -19,6 +19,8 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
   obsolete. Legacy CircleCI has been replaced by GitHub Actions.
 - Keep formatting changes narrow; avoid repository-wide reformatting until the
   compatibility work is stable.
+- Keep Black, flake8, and pycodestyle aligned on an 88-character line length.
+  Clean up the existing full-repository lint baseline incrementally.
 
 ## 3. Modernize Compatibility Hotspots
 
