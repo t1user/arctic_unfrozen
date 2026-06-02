@@ -3,7 +3,7 @@
 ### Install Arctic
 
 ```
-pip install git+https://github.com/manahl/arctic.git
+pip install git+https://github.com/t1user/arctic_unfrozen.git
 ```
 
 ### Run a MongoDB
@@ -39,7 +39,7 @@ aapl = item.data
 metadata = item.metadata
 ```
 
-VersionStore supports much more: [See the HowTo](howtos/how_to_use_arctic.py)!
+VersionStore supports much more: [See the HowTo](https://github.com/t1user/arctic_unfrozen/blob/master/howtos/how_to_use_arctic.py)!
 
 
 ### Adding your own storage engine

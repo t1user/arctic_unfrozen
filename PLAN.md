@@ -69,7 +69,8 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
 
 ## 7. Release Readiness
 
-- Update documentation once supported versions and setup commands settle.
+- Keep the maintained documentation published on Read the Docs and require
+  strict MkDocs builds in CI.
 - Verify packaging metadata and source distributions.
 - Prepare a changelog section that separates compatibility fixes, tooling
   changes, and any user-visible behavior changes.

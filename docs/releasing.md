@@ -1,30 +1,23 @@
-## PyPI
+# Releasing Arctic Unfrozen
 
-Package is hosted here: https://pypi.python.org/pypi/arctic/
+Release automation for the maintained `arctic_unfrozen` distribution is not
+yet established. Do not upload artifacts until the publishing destination,
+credentials, and release approval process are documented.
 
-## General upload and packaging docs
+## Pre-release Checklist
 
-https://realpython.com/pypi-publish-python-package/
+1. Update the version in `pyproject.toml`.
+1. Move the relevant notes from `Unreleased` into a versioned section in
+   `CHANGES.md`.
+1. Run the unit, mypy, and MongoDB-backed integration sessions described in
+   `AGENTS.md`.
+1. Build the documentation with `python -m mkdocs build --strict`.
+1. Build a wheel and source distribution with `python -m build`.
+1. Install the wheel into a clean virtualenv and verify imports and CLI entry
+   points.
+1. Tag the approved release and push the tag.
 
-The version number is of the format: <MAJOR>.<MINOR>.<BUGFIX> 
-For minor bug fixes increment the BUGFIX number. For new features increment the minor letter. MAJOR is only 
-for a major (and possibly non backwards compatible) overhaul of arctic.
+## Publishing
 
-## Pre-requisites
-
-* Ensure you have pypandoc installed for converting the `README.md` to rst for pypi.
-* Configure `.pypirc` to have appropriate credentials for upload. `@burrowsa` `@jamesblackburn` have access
-
-```
-pip install pypandoc
-```
-
-## Procedure
-
-1. Confirm the version number is sane: `grep version= setup.py`
-1. Ensure the working directory is clean: `git status`
-1. Register the egg: `python setup.py register -r pypi`
-1. Upload the source-dist: `python setup.py sdist upload -r pypi`
-1. Upload the egg: `python setup.py build bdist_egg upload -r pypi`
-1. Tag the package: `git tag v1.0.0 -m "Tagging v1.0.0" && git push --tags`
-1. Update the version number in setup.py and push to master
+Add the final artifact-signing and upload commands here before the first Arctic
+Unfrozen release. The legacy `setup.py upload` workflow is obsolete.

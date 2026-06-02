@@ -1,4 +1,7 @@
-# Running on Mac OS X - tested on 10.13.4
+# Historical macOS Development Notes
+
+These notes describe an older conda-based setup. New development environments
+should use the installation and verification commands in `AGENTS.md`.
 
 ## Install XCode from the Mac App Store
 
@@ -33,9 +36,9 @@ conda install pymongo
 ## Build and install arctic
 
 ```
-git clone git@github.com:manahl/arctic.git
-cd arctic
-python setup.py develop
+git clone git@github.com:t1user/arctic_unfrozen.git
+cd arctic_unfrozen
+python -m pip install -e ".[test,dev]"
 ```
 
 ## Run MongoD
@@ -82,10 +85,10 @@ Point at the directory that contains the `mongod` command
 export SERVER_FIXTURES_MONGO_BIN=/Users/james/bin/
 ```
 
-### Tests hanging 
+### Historical MongoDB fixture issues
 
-This is a pytest-server-fixtures issue compatibility with MongoDB 3.6. 
-Use MongoDB 3.4...
+The MongoDB 3.x fixture workaround is obsolete. Use the isolated Docker
+integration-test workflow documented in `AGENTS.md`.
 
 ### lz4 compression issue
 

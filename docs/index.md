@@ -1,12 +1,3 @@
-!!! important "Important"
-    ## ArcticDB
-
-    [ArcticDB](https://arcticdb.io/#arctic1) is a ground-up rewrite of Arctic.<br>
-    The old Arctic, described below, is in maintenance mode.<br>
-    ArcticDB uses a very similar api to Arctic and is much faster.
-    
-    Take a look:<br>
-    [Website](https://arcticdb.io/#arctic1), [Docs](https://docs.arcticdb.io/latest/#arctic1), [GitHub](https://github.com/man-group/arcticdb)
 
 # Arctic Introduction
 
@@ -30,7 +21,7 @@ Head over to the FAQs and James's presentation given below for more details.
 
 ## Basic Operations
 
-Arctic provides a [wrapper](../arctic/arctic.py) for handling connections to Mongo. The `Arctic` class is what actually connects to Arctic.
+Arctic provides a [wrapper](https://github.com/t1user/arctic_unfrozen/blob/master/arctic/arctic.py) for handling connections to Mongo. The `Arctic` class is what actually connects to Arctic.
 
 ```
 >>> conn = Arctic('127.0.0.1')

@@ -1,6 +1,6 @@
 ## Contributing to Arctic Development
 
-* Feel free to pick up an issue from the bug tracker: https://github.com/manahl/arctic/issues or add an issue in general and assign it to yourself so we don't duplicate the work on the same issue.
+* Feel free to pick up an issue from the bug tracker: https://github.com/t1user/arctic_unfrozen/issues or add an issue in general and assign it to yourself so we don't duplicate the work on the same issue.
 
 * Local installation
     * Clone the repo locally

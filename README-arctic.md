@@ -1,14 +1,13 @@
-[![Documentation Status](https://readthedocs.org/projects/arctic/badge/?version=latest)](https://arctic.readthedocs.io/en/latest/?badge=latest)
-[![CircleCI](https://circleci.com/gh/man-group/arctic/tree/master.svg?style=shield)](https://app.circleci.com/pipelines/github/man-group/arctic?branch=master)
-[![PyPI](https://img.shields.io/pypi/v/arctic)](https://pypi.org/project/arctic)
-[![Python](https://img.shields.io/badge/Python-3.6|3.7|3.8-green.svg)](https://github.com/man-group/arctic)
+[![Documentation Status](https://readthedocs.org/projects/arctic-unfrozen/badge/?version=latest)](https://arctic-unfrozen.readthedocs.io/en/latest/?badge=latest)
+[![Tests](https://github.com/t1user/arctic_unfrozen/actions/workflows/unit-tests.yml/badge.svg)](https://github.com/t1user/arctic_unfrozen/actions/workflows/unit-tests.yml)
+[![Python](https://img.shields.io/badge/Python-3.10|3.11|3.12|3.13-green.svg)](https://github.com/t1user/arctic_unfrozen)
 
 ## Quickstart
 
 ### Install Arctic
 
 ``
-pip install git+https://github.com/man-group/arctic.git
+pip install git+https://github.com/t1user/arctic_unfrozen.git
 ``
 
 ### Run a MongoDB
@@ -64,7 +63,7 @@ shows how.](howtos/how_to_custom_arctic_library.py)
 
 ## Documentation
 
-You can find complete documentation at [Arctic docs](https://arctic.readthedocs.io/en/latest/)
+You can find complete documentation at [Arctic Unfrozen docs](https://arctic-unfrozen.readthedocs.io/en/latest/)
 
 ## Concepts
 
@@ -99,7 +98,7 @@ Arctic includes three storage engines:
       * [Documentation](docs/versionstore.md)
   * [TickStore](arctic/tickstore/tickstore.py): Column oriented tick database.  Supports
     dynamic fields, chunks aren't versioned. Designed for large continuously ticking data.
-  * [Chunkstore](https://github.com/man-group/arctic/wiki/Chunkstore): A storage type that allows data to be stored in customizable chunk sizes. Chunks
+  * [Chunkstore](docs/chunkstore.md): A storage type that allows data to be stored in customizable chunk sizes. Chunks
     aren't versioned, and can be appended to and updated in place. 
     * [Documentation](docs/chunkstore.md)
 

@@ -8,6 +8,26 @@ permissions:
   contents: read
 
 jobs:
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install documentation dependencies
+        run: python -m pip install -r docs/requirements.txt
+
+      - name: Build documentation
+        run: python -m mkdocs build --strict
+
   mypy:
     name: Mypy
     runs-on: ubuntu-latest
