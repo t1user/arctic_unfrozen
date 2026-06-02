@@ -84,8 +84,13 @@ def checksum(symbol: str, doc: Mapping[str, Any]) -> Binary:
     return Binary(sha.digest())
 
 
-def get_symbol_alive_shas(symbol: str, versions_coll: _VersionsCollection) -> set[Binary]:
-    return set(Binary(x) for x in versions_coll.distinct(FW_POINTERS_REFS_KEY, {"symbol": symbol}))
+def get_symbol_alive_shas(
+    symbol: str, versions_coll: _VersionsCollection
+) -> set[Binary]:
+    return set(
+        Binary(x)
+        for x in versions_coll.distinct(FW_POINTERS_REFS_KEY, {"symbol": symbol})
+    )
 
 
 def _cleanup_fw_pointers(
@@ -107,17 +112,23 @@ def _cleanup_fw_pointers(
     shas_safe_to_delete = shas_to_delete - symbol_alive_shas
 
     if do_clean and shas_safe_to_delete:
-        collection.delete_many({"symbol": symbol, "sha": {"$in": list(shas_safe_to_delete)}})
+        collection.delete_many(
+            {"symbol": symbol, "sha": {"$in": list(shas_safe_to_delete)}}
+        )
 
     return shas_safe_to_delete
 
 
-def _cleanup_parent_pointers(collection: _SegmentCollection, symbol: str, version_ids: Iterable[VersionId]) -> None:
+def _cleanup_parent_pointers(
+    collection: _SegmentCollection, symbol: str, version_ids: Iterable[VersionId]
+) -> None:
     for v in version_ids:
         # Remove all documents which only contain the parent
         collection.delete_many({"symbol": symbol, "parent": [v]})
         # Pull the parent from the parents field
-        collection.update_many({"symbol": symbol, "parent": v}, {"$pull": {"parent": v}})
+        collection.update_many(
+            {"symbol": symbol, "parent": v}, {"$pull": {"parent": v}}
+        )
 
     # Now remove all chunks which aren't parented - this is unlikely, as they will
     # have been removed by the above
@@ -132,7 +143,10 @@ def _cleanup_mixed(
 ) -> None:
     version_ids = list(version_ids)
     # Pull the deleted version IDs from the the parents field
-    collection.update_many({"symbol": symbol, "parent": {"$in": version_ids}}, {"$pullAll": {"parent": version_ids}})
+    collection.update_many(
+        {"symbol": symbol, "parent": {"$in": version_ids}},
+        {"$pullAll": {"parent": version_ids}},
+    )
 
     # All-inclusive set of segments which are pointed by at least one version (SHA fw pointers)
     symbol_alive_shas = get_symbol_alive_shas(symbol, versions_coll)
@@ -146,9 +160,14 @@ def _cleanup_mixed(
     collection.delete_many(spec)
 
 
-def _get_symbol_pointer_cfgs(symbol: str, versions_coll: _VersionsCollection) -> set[FwPointersCfg]:
+def _get_symbol_pointer_cfgs(
+    symbol: str, versions_coll: _VersionsCollection
+) -> set[FwPointersCfg]:
     return set(
-        get_fwptr_config(v) for v in versions_coll.find({"symbol": symbol}, projection={FW_POINTERS_CONFIG_KEY: 1})
+        get_fwptr_config(v)
+        for v in versions_coll.find(
+            {"symbol": symbol}, projection={FW_POINTERS_CONFIG_KEY: 1}
+        )
     )
 
 
@@ -174,14 +193,22 @@ def cleanup(
 
     # All the versions of the symbol have been created with old arctic or with disabled forward pointers.
     # Preserves backwards compatibility and regression for old pointers implementation.
-    if all_symbol_pointers_cfgs == {FwPointersCfg.DISABLED} or not all_symbol_pointers_cfgs:
+    if (
+        all_symbol_pointers_cfgs == {FwPointersCfg.DISABLED}
+        or not all_symbol_pointers_cfgs
+    ):
         _cleanup_parent_pointers(collection, symbol, version_ids)
         return
 
     # All the versions of the symbol we wish to delete have been created with forward pointers
     if FwPointersCfg.DISABLED not in all_symbol_pointers_cfgs:
         _cleanup_fw_pointers(
-            collection, symbol, version_ids, versions_coll, shas_to_delete=shas_to_delete, do_clean=True
+            collection,
+            symbol,
+            version_ids,
+            versions_coll,
+            shas_to_delete=shas_to_delete,
+            do_clean=True,
         )
         return
 
@@ -232,14 +259,19 @@ def analyze_symbol(
     do_reads : `bool`
         If this flag is set to true, then the corruption check will actually try to read the symbol (slower).
     """
-    logging.info("Analyzing symbol {}. Versions range is [v{}, v{}]".format(sym, from_ver, to_ver))
+    logging.info(
+        "Analyzing symbol {}. Versions range is [v{}, v{}]".format(
+            sym, from_ver, to_ver
+        )
+    )
     prev_rows = 0
     prev_n = 0
     prev_v: VersionDoc | None = None
 
     logging.info("\nVersions for {}:".format(sym))
     for v in instance._versions.find(
-        {"symbol": sym, "version": {"$gte": from_ver, "$lte": to_ver}}, sort=[("version", pymongo.ASCENDING)]
+        {"symbol": sym, "version": {"$gte": from_ver, "$lte": to_ver}},
+        sort=[("version", pymongo.ASCENDING)],
     ):
         n = cast(int, v["version"])
 
@@ -250,12 +282,22 @@ def analyze_symbol(
             matching = 0
         else:
             up_to = cast(int, v.get("up_to", 0))
-            spec = {"symbol": sym, "parent": v.get("base_version_id", v["_id"]), "segment": {"$lt": up_to}}
-            matching = mongo_count(instance._collection, filter=spec) if not is_deleted else 0
+            spec = {
+                "symbol": sym,
+                "parent": v.get("base_version_id", v["_id"]),
+                "segment": {"$lt": up_to},
+            }
+            matching = (
+                mongo_count(instance._collection, filter=spec) if not is_deleted else 0
+            )
 
         base_id = v.get("base_version_id")
         parents = cast(list[Any] | None, v.get("parent"))
-        snaps = ["/".join((str(x), str(x.generation_time))) for x in parents] if parents else None
+        snaps = (
+            ["/".join((str(x), str(x.generation_time))) for x in parents]
+            if parents
+            else None
+        )
 
         up_to = cast(int, v.get("up_to", 0))
         added_rows = up_to - prev_rows
@@ -263,7 +305,10 @@ def analyze_symbol(
         meta_match_with_prev = metadata == prev_v.get("metadata") if prev_v else False
 
         delta_snap_creation = (
-            (min([x.generation_time for x in parents]) - v["_id"].generation_time).total_seconds() / 60.0
+            (
+                min([x.generation_time for x in parents]) - v["_id"].generation_time
+            ).total_seconds()
+            / 60.0
             if parents
             else 0.0
         )
@@ -271,7 +316,9 @@ def analyze_symbol(
         prev_v_diff = 0 if not prev_v else v["version"] - prev_v["version"]
 
         corrupted = not is_deleted and (
-            is_corrupted(instance, sym, v) if do_reads else fast_is_corrupted(instance, sym, v)
+            is_corrupted(instance, sym, v)
+            if do_reads
+            else fast_is_corrupted(instance, sym, v)
         )
 
         logging.info(
@@ -315,7 +362,9 @@ def analyze_symbol(
         prev_v = v
 
     logging.info("\nSegments for {}:".format(sym))
-    for seg in instance._collection.find({"symbol": sym}, sort=[("_id", pymongo.ASCENDING)]):
+    for seg in instance._collection.find(
+        {"symbol": sym}, sort=[("_id", pymongo.ASCENDING)]
+    ):
         logging.info(
             "{: <32}  {: <7}  {: <10} {: <30}".format(
                 hashlib.sha1(seg["sha"]).hexdigest(),
@@ -335,12 +384,15 @@ def _fast_check_corruption(
     check_append_safe: bool,
 ) -> bool:
     if v is None:
-        logging.warning("Symbol {} with version {} not found, so can't be corrupted.".format(sym, v))
+        logging.warning(
+            "Symbol {} with version {} not found, so can't be corrupted.".format(sym, v)
+        )
         return False
 
     if not check_count and not check_last_segment:
         raise ValueError(
-            "_fast_check_corruption must be called with either of " "check_count and check_last_segment set to True"
+            "_fast_check_corruption must be called with either of "
+            "check_count and check_last_segment set to True"
         )
 
     # If version marked symbol as deleted, it will force writes/appends to start from a new base: non corrupted.
@@ -353,7 +405,11 @@ def _fast_check_corruption(
         spec = {"symbol": sym, "parent": v.get("base_version_id", v["_id"])}
     else:
         # Only verify segment count for current symbol version, don't check corruptability of future appends.
-        spec = {"symbol": sym, "parent": v.get("base_version_id", v["_id"]), "segment": {"$lt": v["up_to"]}}
+        spec = {
+            "symbol": sym,
+            "parent": v.get("base_version_id", v["_id"]),
+            "segment": {"$lt": v["up_to"]},
+        }
 
     try:
         # Not that commands sequence (a) is slower than (b)
@@ -374,17 +430,25 @@ def _fast_check_corruption(
 
         if check_last_segment:
             # Quick check: compare the maximum segment's up_to number. It has to verify the version's up_to.
-            max_seg = collection.find_one(spec, {"segment": 1}, sort=[("segment", pymongo.DESCENDING)])
+            max_seg = collection.find_one(
+                spec, {"segment": 1}, sort=[("segment", pymongo.DESCENDING)]
+            )
             max_segment = max_seg["segment"] + 1 if max_seg else 0
             if max_segment != v.get("up_to"):
                 return True  # corrupted, last segment and version's up_to don't agree
     except OperationFailure as e:
-        logging.warning("Corruption checks are skipped (sym={}, version={}): {}".format(sym, v["version"], str(e)))
+        logging.warning(
+            "Corruption checks are skipped (sym={}, version={}): {}".format(
+                sym, v["version"], str(e)
+            )
+        )
 
     return False
 
 
-def is_safe_to_append(instance: _VersionStoreLike, sym: str, input_v: int | VersionDoc) -> bool:
+def is_safe_to_append(
+    instance: _VersionStoreLike, sym: str, input_v: int | VersionDoc
+) -> bool:
     """
     This method hints whether the symbol/version are safe for appending in two ways:
     1. It verifies whether the symbol is already corrupted (fast, doesn't read the data)
@@ -404,13 +468,24 @@ def is_safe_to_append(instance: _VersionStoreLike, sym: str, input_v: int | Vers
     `bool`
         True if the symbol is safe to append, False otherwise.
     """
-    version = instance._versions.find_one({"symbol": sym, "version": input_v}) if isinstance(input_v, int) else input_v
+    version = (
+        instance._versions.find_one({"symbol": sym, "version": input_v})
+        if isinstance(input_v, int)
+        else input_v
+    )
     return not _fast_check_corruption(
-        instance._collection, sym, version, check_count=True, check_last_segment=True, check_append_safe=True
+        instance._collection,
+        sym,
+        version,
+        check_count=True,
+        check_last_segment=True,
+        check_append_safe=True,
     )
 
 
-def fast_is_corrupted(instance: _VersionStoreLike, sym: str, input_v: int | VersionDoc) -> bool:
+def fast_is_corrupted(
+    instance: _VersionStoreLike, sym: str, input_v: int | VersionDoc
+) -> bool:
     """
     This method can be used for a fast check (not involving a read) for a corrupted version.
     Users can't trust this as may give false negatives, but it this returns True, then symbol is certainly broken (no false positives)
@@ -428,13 +503,24 @@ def fast_is_corrupted(instance: _VersionStoreLike, sym: str, input_v: int | Vers
     `bool`
         True if the symbol is found corrupted, False otherwise.
     """
-    version = instance._versions.find_one({"symbol": sym, "version": input_v}) if isinstance(input_v, int) else input_v
+    version = (
+        instance._versions.find_one({"symbol": sym, "version": input_v})
+        if isinstance(input_v, int)
+        else input_v
+    )
     return _fast_check_corruption(
-        instance._collection, sym, version, check_count=True, check_last_segment=True, check_append_safe=False
+        instance._collection,
+        sym,
+        version,
+        check_count=True,
+        check_last_segment=True,
+        check_append_safe=False,
     )
 
 
-def is_corrupted(instance: _VersionStoreLike, sym: str, input_v: int | VersionDoc) -> bool:
+def is_corrupted(
+    instance: _VersionStoreLike, sym: str, input_v: int | VersionDoc
+) -> bool:
     """
     This method can be used to check for a corrupted version.
     Will continue to a full read (slower) if the internally invoked fast-detection does not locate a corruption.
@@ -454,9 +540,18 @@ def is_corrupted(instance: _VersionStoreLike, sym: str, input_v: int | VersionDo
         True if the symbol is found corrupted, False otherwise.
     """
     # If version is just a number, read the version document
-    version = instance._versions.find_one({"symbol": sym, "version": input_v}) if isinstance(input_v, int) else input_v
+    version = (
+        instance._versions.find_one({"symbol": sym, "version": input_v})
+        if isinstance(input_v, int)
+        else input_v
+    )
     if not _fast_check_corruption(
-        instance._collection, sym, version, check_count=True, check_last_segment=True, check_append_safe=False
+        instance._collection,
+        sym,
+        version,
+        check_count=True,
+        check_last_segment=True,
+        check_append_safe=False,
     ):
         if version is None:
             return True

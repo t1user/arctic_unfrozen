@@ -17,13 +17,12 @@ def get_db_connection(host: str, db_name: str | None) -> Any:
 
     The connection attempt remains lazy until the first database operation.
     """
-    admin_creds = get_auth(host, 'admin', 'admin')
-    user_creds = get_auth(host, 'arctic', db_name)
+    admin_creds = get_auth(host, "admin", "admin")
+    user_creds = get_auth(host, "arctic", db_name)
 
     return create_client(host, admin_creds or user_creds)
 
 
 def setup_logging() -> None:
-    """ Logging setup for console scripts
-    """
-    logging.basicConfig(format='%(asctime)s %(message)s', level='INFO')
+    """Logging setup for console scripts"""
+    logging.basicConfig(format="%(asctime)s %(message)s", level="INFO")

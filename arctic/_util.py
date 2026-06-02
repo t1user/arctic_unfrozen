@@ -10,16 +10,19 @@ from ._config import FW_POINTERS_CONFIG_KEY, FwPointersCfg
 
 logger = logging.getLogger(__name__)
 
-NP_OBJECT_DTYPE = np.dtype('O')
+NP_OBJECT_DTYPE = np.dtype("O")
+
 
 def get_fwptr_config(version: dict[str, Any]) -> FwPointersCfg:
-    return FwPointersCfg[version.get(FW_POINTERS_CONFIG_KEY, FwPointersCfg.DISABLED.name)]
+    return FwPointersCfg[
+        version.get(FW_POINTERS_CONFIG_KEY, FwPointersCfg.DISABLED.name)
+    ]
 
 
 def indent(s: str, num_spaces: int) -> str:
-    lines = s.split('\n')
-    lines = [(num_spaces * ' ') + line for line in lines]
-    return '\n'.join(lines)
+    lines = s.split("\n")
+    lines = [(num_spaces * " ") + line for line in lines]
+    return "\n".join(lines)
 
 
 def are_equals(o1: Any, o2: Any, **kwargs: Any) -> bool:
@@ -32,7 +35,9 @@ def are_equals(o1: Any, o2: Any, **kwargs: Any) -> bool:
         return False
 
 
-def enable_sharding(arctic: Any, library_name: str, hashed: bool = True, key: str = 'symbol') -> None:
+def enable_sharding(
+    arctic: Any, library_name: str, hashed: bool = True, key: str = "symbol"
+) -> None:
     """
     Enable sharding on a library
 
@@ -55,19 +60,23 @@ def enable_sharding(arctic: Any, library_name: str, hashed: bool = True, key: st
     dbname = lib._db.name
     library_name = lib.get_top_level_collection().name
     try:
-        c.admin.command('enablesharding', dbname)
+        c.admin.command("enablesharding", dbname)
     except pymongo.errors.OperationFailure as e:
-        if 'already enabled' not in str(e):
+        if "already enabled" not in str(e):
             raise
     if not hashed:
-        logger.info("Range sharding '" + key + "' on: " + dbname + '.' + library_name)
-        c.admin.command('shardCollection', dbname + '.' + library_name, key={key: 1})
+        logger.info("Range sharding '" + key + "' on: " + dbname + "." + library_name)
+        c.admin.command("shardCollection", dbname + "." + library_name, key={key: 1})
     else:
-        logger.info("Hash sharding '" + key + "' on: " + dbname + '.' + library_name)
-        c.admin.command('shardCollection', dbname + '.' + library_name, key={key: 'hashed'})
+        logger.info("Hash sharding '" + key + "' on: " + dbname + "." + library_name)
+        c.admin.command(
+            "shardCollection", dbname + "." + library_name, key={key: "hashed"}
+        )
 
 
-def mongo_count(collection: Any, filter: dict[str, Any] | None = None, **kwargs: Any) -> int:
+def mongo_count(
+    collection: Any, filter: dict[str, Any] | None = None, **kwargs: Any
+) -> int:
     """
     use with care as filters on un-indexed fields will generate COLLSCAN.
     """

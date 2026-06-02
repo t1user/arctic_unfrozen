@@ -7,9 +7,11 @@ from ._chunker import Chunker
 
 
 class PassthroughChunker(Chunker):
-    TYPE = 'passthru'
+    TYPE = "passthru"
 
-    def to_chunks(self, data: Any, **kwargs: Any) -> Iterator[tuple[bytes, bytes, bytes, Any]]:
+    def to_chunks(
+        self, data: Any, **kwargs: Any
+    ) -> Iterator[tuple[bytes, bytes, bytes, Any]]:
         """
         pass thru chunker of the dataframe/series
 
@@ -18,7 +20,7 @@ class PassthroughChunker(Chunker):
         ('NA', 'NA', 'NA', dataframe/series)
         """
         if len(data) > 0:
-            yield b'NA', b'NA', b'NA', data
+            yield b"NA", b"NA", b"NA", data
 
     def to_range(self, start: Any, end: Any) -> bytes:
         """
@@ -28,7 +30,7 @@ class PassthroughChunker(Chunker):
         -------
         string
         """
-        return b'NA'
+        return b"NA"
 
     def chunk_to_str(self, chunk_id: Any) -> bytes:
         """
@@ -38,7 +40,7 @@ class PassthroughChunker(Chunker):
         -------
         string
         """
-        return b'NA'
+        return b"NA"
 
     def to_mongo(self, range_obj: Any) -> dict[str, Any]:
         """

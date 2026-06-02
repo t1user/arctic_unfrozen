@@ -1,6 +1,5 @@
 import nox
 
-
 PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13"]
 
 nox.options.default_venv_backend = "venv"
@@ -31,6 +30,12 @@ def unit(session):
 @nox.session
 def mypy(session):
     _run_mypy(session)
+
+
+@nox.session
+def black(session):
+    session.install("black")
+    session.run("python", "-m", "black", "--check", ".")
 
 
 @nox.session

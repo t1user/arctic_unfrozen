@@ -5,8 +5,13 @@ from functools import wraps
 from time import sleep
 from typing import Any, ParamSpec, TypeVar
 
-from pymongo.errors import (AutoReconnect, OperationFailure, DuplicateKeyError, ServerSelectionTimeoutError,
-                            BulkWriteError)
+from pymongo.errors import (
+    AutoReconnect,
+    OperationFailure,
+    DuplicateKeyError,
+    ServerSelectionTimeoutError,
+    BulkWriteError,
+)
 
 from .hooks import log_exception as _log_exception
 
@@ -23,9 +28,11 @@ def _get_host(store: Any) -> dict[str, Any]:
         try:
             if isinstance(store, (list, tuple)):
                 store = store[0]
-            ret['l'] = store._arctic_lib.get_name()
-            ret['mnodes'] = ["{}:{}".format(h, p) for h, p in store._collection.database.client.nodes]
-            ret['mhost'] = "{}".format(store._arctic_lib.arctic.mongo_host)
+            ret["l"] = store._arctic_lib.get_name()
+            ret["mnodes"] = [
+                "{}:{}".format(h, p) for h, p in store._collection.database.client.nodes
+            ]
+            ret["mhost"] = "{}".format(store._arctic_lib.arctic.mongo_host)
         except Exception:
             # Sometimes get_name(), for example, fails if we're not connected to MongoDB.
             pass
@@ -41,7 +48,7 @@ def mongo_retry(f: Callable[P, R]) -> Callable[P, R]:
     Catch-all decorator that handles AutoReconnect and OperationFailure
     errors from PyMongo
     """
-    log_all_exceptions = 'arctic' in f.__module__ if f.__module__ else False
+    log_all_exceptions = "arctic" in f.__module__ if f.__module__ else False
 
     @wraps(f)
     def f_retry(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -52,7 +59,11 @@ def mongo_retry(f: Callable[P, R]) -> Callable[P, R]:
             while True:
                 try:
                     return f(*args, **kwargs)
-                except (DuplicateKeyError, ServerSelectionTimeoutError, BulkWriteError) as e:
+                except (
+                    DuplicateKeyError,
+                    ServerSelectionTimeoutError,
+                    BulkWriteError,
+                ) as e:
                     # Re-raise errors that won't go away.
                     _handle_error(f, e, _retry_count, **_get_host(args))
                     raise
@@ -67,18 +78,21 @@ def mongo_retry(f: Callable[P, R]) -> Callable[P, R]:
             if top_level:
                 _in_retry = False
                 _retry_count = 0
+
     return f_retry
 
 
-def _handle_error(f: Callable[..., Any], e: Exception, retry_count: int, **kwargs: Any) -> None:
+def _handle_error(
+    f: Callable[..., Any], e: Exception, retry_count: int, **kwargs: Any
+) -> None:
     if retry_count > _MAX_RETRIES:
-        logger.error('Too many retries %s [%s], raising' % (f.__name__, e))
+        logger.error("Too many retries %s [%s], raising" % (f.__name__, e))
         e.traceback = sys.exc_info()[2]  # type: ignore[attr-defined]
         raise
     log_fn = logger.warning if retry_count > 2 else logger.debug
-    log_fn('%s %s [%s], retrying %i' % (type(e), f.__name__, e, retry_count))
+    log_fn("%s %s [%s], retrying %i" % (type(e), f.__name__, e, retry_count))
     # Log operation failure errors
     _log_exception(f.__name__, e, retry_count, **kwargs)
-    if isinstance(e, OperationFailure) and 'unauthorized' in str(e):
+    if isinstance(e, OperationFailure) and "unauthorized" in str(e):
         raise
-    sleep(0.01 * min((3 ** retry_count), 50))  # backoff...
+    sleep(0.01 * min((3**retry_count), 50))  # backoff...

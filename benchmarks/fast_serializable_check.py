@@ -1,7 +1,9 @@
 import time
 
 import arctic.serialization.numpy_records as anr
-from tests.unit.serialization.serialization_test_data import _mixed_test_data as input_test_data
+from tests.unit.serialization.serialization_test_data import (
+    _mixed_test_data as input_test_data,
+)
 
 df_serializer = anr.DataFrameSerializer()
 
@@ -11,8 +13,10 @@ def _bench(rounds, input_df, fast):
     anr.set_fast_check_df_serializable(fast)
     start = time.time()
     for i in range(rounds):
-        df_serializer.can_convert_to_records_without_objects(input_df, 'symA')
-    print("Time per iteration (fast={}): {}".format(fast, (time.time() - start)/rounds))
+        df_serializer.can_convert_to_records_without_objects(input_df, "symA")
+    print(
+        "Time per iteration (fast={}): {}".format(fast, (time.time() - start) / rounds)
+    )
 
 
 # Results suggest significant speed improvements for
@@ -38,9 +42,13 @@ def assess_speed(df_kind):
 
 
 def main():
-    for df_kind in ('large_with_some_objects', 'large_multi_index', 'large_multi_column'):
+    for df_kind in (
+        "large_with_some_objects",
+        "large_multi_index",
+        "large_multi_column",
+    ):
         assess_speed(df_kind)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

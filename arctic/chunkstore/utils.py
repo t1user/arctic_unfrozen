@@ -1,21 +1,23 @@
 """
 Helper functions that are not 'core' to chunkstore
 """
+
 from collections.abc import Callable, Iterator
 from typing import Any, Protocol, TypeVar
-
 
 Chunk = TypeVar("Chunk", covariant=True)
 Result = TypeVar("Result")
 
 
 class _ChunkIteratorLibrary(Protocol[Chunk]):
-    def iterator(self, symbol: str, chunk_range: Any = None) -> Iterator[Chunk]:
-        ...
+    def iterator(self, symbol: str, chunk_range: Any = None) -> Iterator[Chunk]: ...
 
 
 def read_apply(
-    lib: _ChunkIteratorLibrary[Chunk], symbol: str, func: Callable[[Chunk], Result], chunk_range: Any = None
+    lib: _ChunkIteratorLibrary[Chunk],
+    symbol: str,
+    func: Callable[[Chunk], Result],
+    chunk_range: Any = None,
 ) -> Iterator[Result]:
     """
     Apply `func` to each chunk in lib.symbol

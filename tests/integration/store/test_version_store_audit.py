@@ -39,36 +39,37 @@ ts1_append = read_str_as_pandas("""         times | near
                    2012-11-08 17:06:11.040 |  3.0
                    2012-11-09 17:06:11.040 |  3.0""")
 
-symbol = 'TS1'
-symbol2 = 'TS2'
-symbol3 = 'TS3'
+symbol = "TS1"
+symbol2 = "TS2"
+symbol3 = "TS3"
 
 
 def test_ArcticTransaction_can_do_first_writes(library):
-    with ArcticTransaction(library, 'SYMBOL_NOT_HERE', 'user', 'log') as cwb:
-        cwb.write('SYMBOL_NOT_HERE', ts1)
-    wrote_vi = library.read('SYMBOL_NOT_HERE')
+    with ArcticTransaction(library, "SYMBOL_NOT_HERE", "user", "log") as cwb:
+        cwb.write("SYMBOL_NOT_HERE", ts1)
+    wrote_vi = library.read("SYMBOL_NOT_HERE")
     assert_frame_equal(wrote_vi.data, ts1)
 
 
 def test_ArcticTransaction_detects_concurrent_writes(library):
-    library.write('FOO', ts1)
+    library.write("FOO", ts1)
 
     from threading import Event, Thread
+
     e1 = Event()
     e2 = Event()
 
     def losing_writer():
         # will attempt to write version 2, should find that version 2 is there and it ends up writing version 3
         with pytest.raises(ConcurrentModificationException):
-            with ArcticTransaction(library, 'FOO', 'user', 'log') as cwb:
-                cwb.write('FOO', ts1_append, metadata={'foo': 'bar'})
+            with ArcticTransaction(library, "FOO", "user", "log") as cwb:
+                cwb.write("FOO", ts1_append, metadata={"foo": "bar"})
                 e1.wait()
 
     def winning_writer():
         # will attempt to write version 2 as well
-        with ArcticTransaction(library, 'FOO', 'user', 'log') as cwb:
-            cwb.write('FOO', ts2, metadata={'foo': 'bar'})
+        with ArcticTransaction(library, "FOO", "user", "log") as cwb:
+            cwb.write("FOO", ts2, metadata={"foo": "bar"})
             e2.wait()
 
     t1 = Thread(target=losing_writer)
@@ -84,137 +85,152 @@ def test_ArcticTransaction_detects_concurrent_writes(library):
     t1.join()
 
     # we're expecting the losing_writer to undo its write once it realises that it wrote v3 instead of v2
-    wrote_vi = library.read('FOO')
+    wrote_vi = library.read("FOO")
     assert_frame_equal(wrote_vi.data, ts2)
-    assert {'foo': 'bar'} == wrote_vi.metadata
+    assert {"foo": "bar"} == wrote_vi.metadata
 
 
 def test_audit_writes(library):
-    with ArcticTransaction(library, symbol, 'u1', 'l1') as mt:
+    with ArcticTransaction(library, symbol, "u1", "l1") as mt:
         mt.write(symbol, ts1)
 
-    with ArcticTransaction(library, symbol, 'u2', 'l2') as mt:
+    with ArcticTransaction(library, symbol, "u2", "l2") as mt:
         mt.write(symbol, ts2)
 
     audit_log = library.read_audit_log(symbol)
-    assert audit_log == [{u'new_v': 2, u'symbol': u'TS1', u'message': u'l2', u'user': u'u2', u'orig_v': 1},
-                         {u'new_v': 1, u'symbol': u'TS1', u'message': u'l1', u'user': u'u1', u'orig_v': 0}]
-    assert_frame_equal(ts1, library.read(symbol, audit_log[0]['orig_v']).data)
-    assert_frame_equal(ts2, library.read(symbol, audit_log[0]['new_v']).data)
+    assert audit_log == [
+        {"new_v": 2, "symbol": "TS1", "message": "l2", "user": "u2", "orig_v": 1},
+        {"new_v": 1, "symbol": "TS1", "message": "l1", "user": "u1", "orig_v": 0},
+    ]
+    assert_frame_equal(ts1, library.read(symbol, audit_log[0]["orig_v"]).data)
+    assert_frame_equal(ts2, library.read(symbol, audit_log[0]["new_v"]).data)
 
 
 def test_metadata_changes_writes(library):
-    with ArcticTransaction(library, symbol, 'u1', 'l1') as mt:
-        mt.write(symbol, ts1, metadata={'original': 'data'})
+    with ArcticTransaction(library, symbol, "u1", "l1") as mt:
+        mt.write(symbol, ts1, metadata={"original": "data"})
 
-    with ArcticTransaction(library, symbol, 'u2', 'l2') as mt:
-        mt.write(symbol, ts1, metadata={'some': 'data', 'original': 'data'})
+    with ArcticTransaction(library, symbol, "u2", "l2") as mt:
+        mt.write(symbol, ts1, metadata={"some": "data", "original": "data"})
 
     audit_log = library.read_audit_log(symbol)
-    assert audit_log == [{u'new_v': 2, u'symbol': u'TS1', u'message': u'l2', u'user': u'u2', u'orig_v': 1},
-                         {u'new_v': 1, u'symbol': u'TS1', u'message': u'l1', u'user': u'u1', u'orig_v': 0}]
-    assert_frame_equal(ts1, library.read(symbol, audit_log[0]['orig_v']).data)
-    assert_frame_equal(ts1, library.read(symbol, audit_log[0]['new_v']).data)
+    assert audit_log == [
+        {"new_v": 2, "symbol": "TS1", "message": "l2", "user": "u2", "orig_v": 1},
+        {"new_v": 1, "symbol": "TS1", "message": "l1", "user": "u1", "orig_v": 0},
+    ]
+    assert_frame_equal(ts1, library.read(symbol, audit_log[0]["orig_v"]).data)
+    assert_frame_equal(ts1, library.read(symbol, audit_log[0]["new_v"]).data)
 
-    assert library.read(symbol, audit_log[0]['orig_v']).metadata == {'original': 'data'}
-    assert library.read(symbol, audit_log[0]['new_v']).metadata == {'some': 'data', 'original': 'data'}
+    assert library.read(symbol, audit_log[0]["orig_v"]).metadata == {"original": "data"}
+    assert library.read(symbol, audit_log[0]["new_v"]).metadata == {
+        "some": "data",
+        "original": "data",
+    }
 
 
 def test_audit_read(library):
-    with ArcticTransaction(library, symbol3, 'u3', 'foo') as mt:
+    with ArcticTransaction(library, symbol3, "u3", "foo") as mt:
         mt.write(symbol3, ts1)
 
-    with ArcticTransaction(library, symbol, 'u1', 'l1') as mt:
+    with ArcticTransaction(library, symbol, "u1", "l1") as mt:
         mt.write(symbol, ts1)
 
-    with ArcticTransaction(library, symbol, 'u2', 'l2') as mt:
+    with ArcticTransaction(library, symbol, "u2", "l2") as mt:
         mt.write(symbol, ts2)
 
-    with ArcticTransaction(library, symbol2, 'u2', 'l2') as mt:
+    with ArcticTransaction(library, symbol2, "u2", "l2") as mt:
         mt.write(symbol2, ts2)
 
     audit_log = library.read_audit_log()
 
-    assert audit_log == [{u'new_v': 1, u'symbol': u'TS2', u'message': u'l2', u'user': u'u2', u'orig_v': 0},
-                         {u'new_v': 2, u'symbol': u'TS1', u'message': u'l2', u'user': u'u2', u'orig_v': 1},
-                         {u'new_v': 1, u'symbol': u'TS1', u'message': u'l1', u'user': u'u1', u'orig_v': 0},
-                         {u'new_v': 1, u'symbol': u'TS3', u'message': u'foo', u'user': u'u3', u'orig_v': 0},
-                         ]
+    assert audit_log == [
+        {"new_v": 1, "symbol": "TS2", "message": "l2", "user": "u2", "orig_v": 0},
+        {"new_v": 2, "symbol": "TS1", "message": "l2", "user": "u2", "orig_v": 1},
+        {"new_v": 1, "symbol": "TS1", "message": "l1", "user": "u1", "orig_v": 0},
+        {"new_v": 1, "symbol": "TS3", "message": "foo", "user": "u3", "orig_v": 0},
+    ]
 
-    l2_audit_log = library.read_audit_log(message='l2')
+    l2_audit_log = library.read_audit_log(message="l2")
 
-    assert l2_audit_log == [{u'new_v': 1, u'symbol': u'TS2', u'message': u'l2', u'user': u'u2', u'orig_v': 0},
-                         {u'new_v': 2, u'symbol': u'TS1', u'message': u'l2', u'user': u'u2', u'orig_v': 1},
-                         ]
+    assert l2_audit_log == [
+        {"new_v": 1, "symbol": "TS2", "message": "l2", "user": "u2", "orig_v": 0},
+        {"new_v": 2, "symbol": "TS1", "message": "l2", "user": "u2", "orig_v": 1},
+    ]
 
     symbol_audit_log = library.read_audit_log(symbol=symbol)
 
-    assert symbol_audit_log == [{u'new_v': 2, u'symbol': u'TS1', u'message': u'l2', u'user': u'u2', u'orig_v': 1},
-                         {u'new_v': 1, u'symbol': u'TS1', u'message': u'l1', u'user': u'u1', u'orig_v': 0}]
+    assert symbol_audit_log == [
+        {"new_v": 2, "symbol": "TS1", "message": "l2", "user": "u2", "orig_v": 1},
+        {"new_v": 1, "symbol": "TS1", "message": "l1", "user": "u1", "orig_v": 0},
+    ]
 
     symbols_audit_log = library.read_audit_log(symbol=[symbol, symbol2])
 
-    assert symbols_audit_log == [{u'new_v': 1, u'symbol': u'TS2', u'message': u'l2', u'user': u'u2', u'orig_v': 0},
-                                {u'new_v': 2, u'symbol': u'TS1', u'message': u'l2', u'user': u'u2', u'orig_v': 1},
-                         {u'new_v': 1, u'symbol': u'TS1', u'message': u'l1', u'user': u'u1', u'orig_v': 0}]
+    assert symbols_audit_log == [
+        {"new_v": 1, "symbol": "TS2", "message": "l2", "user": "u2", "orig_v": 0},
+        {"new_v": 2, "symbol": "TS1", "message": "l2", "user": "u2", "orig_v": 1},
+        {"new_v": 1, "symbol": "TS1", "message": "l1", "user": "u1", "orig_v": 0},
+    ]
 
-    symbol_message_audit_log = library.read_audit_log(symbol=symbol, message='l2')
+    symbol_message_audit_log = library.read_audit_log(symbol=symbol, message="l2")
 
-    assert symbol_message_audit_log == [{u'new_v': 2, u'symbol': u'TS1', u'message': u'l2', u'user': u'u2', u'orig_v': 1}, ]
+    assert symbol_message_audit_log == [
+        {"new_v": 2, "symbol": "TS1", "message": "l2", "user": "u2", "orig_v": 1},
+    ]
 
 
 def test_cleanup_orphaned_versions_integration(library):
     _id = ObjectId.from_datetime(dt(2013, 1, 1))
-    with patch('bson.ObjectId', return_value=_id):
-        with ArcticTransaction(library, symbol, 'u1', 'l1') as mt:
+    with patch("bson.ObjectId", return_value=_id):
+        with ArcticTransaction(library, symbol, "u1", "l1") as mt:
             mt.write(symbol, ts1)
-    assert mongo_count(library._versions, filter={'parent': {'$size': 1}}) == 1
+    assert mongo_count(library._versions, filter={"parent": {"$size": 1}}) == 1
     library._cleanup_orphaned_versions(False)
-    assert mongo_count(library._versions, filter={'parent': {'$size': 1}}) == 1
+    assert mongo_count(library._versions, filter={"parent": {"$size": 1}}) == 1
 
 
 def test_corrupted_read_writes_new(library):
-    with ArcticTransaction(library, symbol, 'u1', 'l1') as mt:
+    with ArcticTransaction(library, symbol, "u1", "l1") as mt:
         mt.write(symbol, ts1)
 
     res = library.read(symbol)
     assert res.version == 1
 
-    with ArcticTransaction(library, symbol, 'u1', 'l2') as mt:
+    with ArcticTransaction(library, symbol, "u1", "l2") as mt:
         mt.write(symbol, ts2)
 
     res = library.read(symbol)
     assert res.version == 2
 
-    with patch.object(library, 'read') as l:
-        l.side_effect = OperationFailure('some failure')
-        with ArcticTransaction(library, symbol, 'u1', 'l2') as mt:
-            mt.write(symbol, ts3, metadata={'a': 1, 'b': 2})
+    with patch.object(library, "read") as l:
+        l.side_effect = OperationFailure("some failure")
+        with ArcticTransaction(library, symbol, "u1", "l2") as mt:
+            mt.write(symbol, ts3, metadata={"a": 1, "b": 2})
 
     res = library.read(symbol)
     # Corrupted data still increments on write to next version correctly with new data
     assert res.version == 3
     assert_frame_equal(ts3, library.read(symbol, 3).data)
-    assert res.metadata == {'a': 1, 'b': 2}
+    assert res.metadata == {"a": 1, "b": 2}
 
-    with patch.object(library, 'read') as l:
-        l.side_effect = OperationFailure('some failure')
-        with ArcticTransaction(library, symbol, 'u1', 'l2') as mt:
-            mt.write(symbol, ts3, metadata={'a': 1, 'b': 2})
+    with patch.object(library, "read") as l:
+        l.side_effect = OperationFailure("some failure")
+        with ArcticTransaction(library, symbol, "u1", "l2") as mt:
+            mt.write(symbol, ts3, metadata={"a": 1, "b": 2})
 
     res = library.read(symbol)
     # Corrupted data still increments to next version correctly with ts & metadata unchanged
     assert res.version == 4
     assert_frame_equal(ts3, library.read(symbol, 4).data)
-    assert res.metadata == {'a': 1, 'b': 2}
+    assert res.metadata == {"a": 1, "b": 2}
 
 
 def test_write_after_delete(library):
-    with ArcticTransaction(library, symbol, 'u1', 'l') as mt:
+    with ArcticTransaction(library, symbol, "u1", "l") as mt:
         mt.write(symbol, ts1)
     library.delete(symbol)
 
-    with ArcticTransaction(library, symbol, 'u1', 'l') as mt:
+    with ArcticTransaction(library, symbol, "u1", "l") as mt:
         mt.write(symbol, ts1_append)
     assert_frame_equal(library.read(symbol).data, ts1_append)
 
@@ -225,13 +241,13 @@ def test_ArcticTransaction_write_skips_for_exact_match(library):
              2014-11-13 21:30:00.000 |  193964.45
              2014-11-14 21:30:00.000 | 193650.403""")
 
-    with ArcticTransaction(library, symbol, 'u1', 'l1') as mt:
+    with ArcticTransaction(library, symbol, "u1", "l1") as mt:
         mt.write(symbol, ts)
 
     version = library.read(symbol).version
 
     # try and store same TimeSeries again
-    with ArcticTransaction(library, symbol, 'u1', 'l2') as mt:
+    with ArcticTransaction(library, symbol, "u1", "l2") as mt:
         mt.write(symbol, ts)
 
     assert library.read(symbol).version == version
@@ -243,7 +259,7 @@ def test_ArcticTransaction_write_doesnt_skip_for_close_ts(library):
                   2014-11-13 21:30:00.000 |  193964.45
                   2014-11-14 21:30:00.000 | 193650.403""")
 
-    with ArcticTransaction(library, symbol, 'u1', 'l1') as mt:
+    with ArcticTransaction(library, symbol, "u1", "l1") as mt:
         mt.write(symbol, orig_ts)
 
     assert_frame_equal(library.read(symbol).data, orig_ts)
@@ -254,7 +270,7 @@ def test_ArcticTransaction_write_doesnt_skip_for_close_ts(library):
                  2014-11-13 21:30:00.000 | 193964.453
                  2014-11-14 21:30:00.000 | 193650.406""")
 
-    with ArcticTransaction(library, symbol, 'u1', 'l2') as mt:
+    with ArcticTransaction(library, symbol, "u1", "l2") as mt:
         mt.write(symbol, new_ts)
 
     assert_frame_equal(library.read(symbol).data, new_ts)

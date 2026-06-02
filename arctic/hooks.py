@@ -29,7 +29,9 @@ def register_resolve_mongodb_hook(hook: ResolveMongoHook) -> None:
     _resolve_mongodb_hook = hook
 
 
-def log_exception(fn_name: str, exception: BaseException, retry_count: int, **kwargs: Any) -> None:
+def log_exception(
+    fn_name: str, exception: BaseException, retry_count: int, **kwargs: Any
+) -> None:
     """
     External exception logging hook.
     """

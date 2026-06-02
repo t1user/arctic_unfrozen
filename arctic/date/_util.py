@@ -10,13 +10,15 @@ from ._generalslice import OPEN_OPEN, CLOSED_CLOSED, OPEN_CLOSED, CLOSED_OPEN, I
 from ._mktz import mktz
 from ._parse import parse
 
-
 # Support standard brackets syntax for open/closed ranges.
 Ranges = {"()": OPEN_OPEN, "(]": OPEN_CLOSED, "[)": CLOSED_OPEN, "[]": CLOSED_CLOSED}
 
 
 def string_to_daterange(
-    str_range: str, delimiter: str = "-", as_dates: bool = False, interval: Intervals = CLOSED_CLOSED
+    str_range: str,
+    delimiter: str = "-",
+    as_dates: bool = False,
+    interval: Intervals = CLOSED_CLOSED,
 ) -> DateRange:
     """
     Convert a string to a DateRange type. If you put only one date, it generates the
@@ -59,12 +61,17 @@ def string_to_daterange(
     """
     num_dates = str_range.count(delimiter) + 1
     if num_dates > 2:
-        raise ValueError("Too many dates in input string [%s] with delimiter (%s)" % (str_range, delimiter))
+        raise ValueError(
+            "Too many dates in input string [%s] with delimiter (%s)"
+            % (str_range, delimiter)
+        )
 
     # Allow the user to use the [date-date), etc. range syntax to specify the interval.
     range_mode = Ranges.get(str_range[0] + str_range[-1], None)
     if range_mode:
-        return string_to_daterange(str_range[1:-1], delimiter, as_dates, interval=range_mode)
+        return string_to_daterange(
+            str_range[1:-1], delimiter, as_dates, interval=range_mode
+        )
 
     def parse_dt(value: str) -> DateBound | None:
         if not value:
@@ -82,7 +89,9 @@ def string_to_daterange(
     return DateRange(d[0], d[1], oc)
 
 
-def to_dt(date: int | datetime.datetime, default_tz: datetime.tzinfo | None = None) -> datetime.datetime:
+def to_dt(
+    date: int | datetime.datetime, default_tz: datetime.tzinfo | None = None
+) -> datetime.datetime:
     """
     Returns a non-naive datetime.datetime.
 
@@ -110,7 +119,9 @@ def to_dt(date: int | datetime.datetime, default_tz: datetime.tzinfo | None = No
     return date
 
 
-def to_pandas_closed_closed(date_range: DateRange | None, add_tz: bool = True) -> DateRange | None:
+def to_pandas_closed_closed(
+    date_range: DateRange | None, add_tz: bool = True
+) -> DateRange | None:
     """
     Pandas DateRange slicing is CLOSED-CLOSED inclusive at both ends.
 
@@ -170,7 +181,9 @@ def datetime_to_ms(d: datetime.datetime) -> int:
         # https://github.com/pandas-dev/pandas/issues/32174
         tmp = _add_tzone(d)
         if isinstance(tmp, pd.Timestamp):
-            return calendar.timegm(tmp.to_pydatetime().utctimetuple()) * 1000 + millisecond
+            return (
+                calendar.timegm(tmp.to_pydatetime().utctimetuple()) * 1000 + millisecond
+            )
         return calendar.timegm(tmp.utctimetuple()) * 1000 + millisecond
     except AttributeError:
         raise TypeError("expect Python datetime object, not %s" % type(d))
@@ -180,7 +193,9 @@ def utc_dt_to_local_dt(dtm: datetime.datetime) -> datetime.datetime:
     """Convert a UTC datetime to datetime in local timezone"""
     utc_zone = mktz("UTC")
     if dtm.tzinfo is not None and dtm.tzinfo != utc_zone:
-        raise ValueError("Expected dtm without tzinfo or with UTC, not %r" % (dtm.tzinfo))
+        raise ValueError(
+            "Expected dtm without tzinfo or with UTC, not %r" % (dtm.tzinfo)
+        )
 
     if dtm.tzinfo is None:
         dtm = dtm.replace(tzinfo=utc_zone)

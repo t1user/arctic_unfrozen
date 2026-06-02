@@ -25,19 +25,20 @@ except ImportError:
         # pandas <=  0.19.x
         from pandas.lib import max_len_string_array
 
-if int(pd.__version__.split('.')[1]) > 22:
+if int(pd.__version__.split(".")[1]) > 22:
     from functools import partial
+
     pd.concat = partial(pd.concat, sort=False)
 
 
-DATA = 'd'
-MASK = 'm'
-TYPE = 't'
-DTYPE = 'dt'
-COLUMNS = 'c'
-INDEX = 'i'
-METADATA = 'md'
-LENGTHS = 'ln'
+DATA = "d"
+MASK = "m"
+TYPE = "t"
+DTYPE = "dt"
+COLUMNS = "c"
+INDEX = "i"
+METADATA = "md"
+LENGTHS = "ln"
 
 
 class FrameConverter(object):
@@ -60,41 +61,41 @@ class FrameConverter(object):
         """
         Converts object arrays of strings to numpy string arrays
         """
-        if not hasattr(a.dtype, 'str'):
+        if not hasattr(a.dtype, "str"):
             a = np.asarray(a)
 
         # No conversion for scalar type
-        if a.dtype != 'object':
+        if a.dtype != "object":
             return a, None
 
         # We can't infer the type of an empty array, so just
         # assume strings
         if len(a) == 0:
-            return a.astype('U1'), None
+            return a.astype("U1"), None
 
         # Compute a mask of missing values. Replace NaNs and Nones with
         # empty strings so that type inference has a chance.
         mask = pd.isnull(a)
         if mask.sum() > 0:
             a = a.copy()
-            np.putmask(a, mask, '')
+            np.putmask(a, mask, "")
         else:
             mask = None
 
-        if infer_dtype(a, skipna=False) == 'mixed':
+        if infer_dtype(a, skipna=False) == "mixed":
             # assume its a string, otherwise raise an error
             try:
-                a = np.array([s.encode('ascii') for s in a])
-                a = a.astype('O')
+                a = np.array([s.encode("ascii") for s in a])
+                a = a.astype("O")
             except:
                 raise ValueError("Column of type 'mixed' cannot be converted to string")
 
         type_ = infer_dtype(a, skipna=False)
-        if type_ in ['unicode', 'string']:
+        if type_ in ["unicode", "string"]:
             max_len = max_len_string_array(a)
-            return a.astype('U{:d}'.format(max_len)), mask
+            return a.astype("U{:d}".format(max_len)), mask
         else:
-            raise ValueError('Cannot store arrays with {} dtype'.format(type_))
+            raise ValueError("Cannot store arrays with {} dtype".format(type_))
 
     def docify(self, df: pd.DataFrame) -> SON[str, Any]:
         """
@@ -109,7 +110,7 @@ class FrameConverter(object):
         masks = {}
         lengths = {}
         columns = []
-        data = b''
+        data = b""
         start = 0
 
         arrays: list[bytes] = []
@@ -135,11 +136,7 @@ class FrameConverter(object):
             data += d
 
         doc: SON[str, Any] = SON({DATA: Binary(data), METADATA: {}})
-        doc[METADATA] = {COLUMNS: columns,
-                         MASK: masks,
-                         LENGTHS: lengths,
-                         DTYPE: dtypes
-                         }
+        doc[METADATA] = {COLUMNS: columns, MASK: masks, LENGTHS: lengths, DTYPE: dtypes}
 
         return doc
 
@@ -158,13 +155,18 @@ class FrameConverter(object):
             if col not in doc[METADATA][LENGTHS]:
                 d = np.array(np.nan)
             else:
-                raw_data = decompress(doc[DATA][doc[METADATA][LENGTHS][col][0]: doc[METADATA][LENGTHS][col][1] + 1])
+                raw_data = decompress(
+                    doc[DATA][
+                        doc[METADATA][LENGTHS][col][0] : doc[METADATA][LENGTHS][col][1]
+                        + 1
+                    ]
+                )
                 # d is ready-only but that's not an issue since DataFrame will copy the data anyway.
                 d = np.frombuffer(raw_data, doc[METADATA][DTYPE][col])
 
                 if MASK in doc[METADATA] and col in doc[METADATA][MASK]:
                     mask_data = decompress(doc[METADATA][MASK][col])
-                    mask = np.frombuffer(mask_data, 'bool')
+                    mask = np.frombuffer(mask_data, "bool")
                     d = ma.masked_array(d, mask)
             data[col] = d
 
@@ -173,7 +175,7 @@ class FrameConverter(object):
 
 
 class FrametoArraySerializer(Serializer):
-    TYPE = 'FrameToArray'
+    TYPE = "FrameToArray"
 
     def __init__(self) -> None:
         self.converter = FrameConverter()
@@ -181,12 +183,14 @@ class FrametoArraySerializer(Serializer):
     def serialize(self, data: Any, **kwargs: Any) -> SON[str, Any]:
         df = data
         if isinstance(df, pd.Series):
-            dtype = 'series'
+            dtype = "series"
             df = df.to_frame()
         else:
-            dtype = 'dataframe'
+            dtype = "dataframe"
 
-        if (len(df.index.names) > 1 and None in df.index.names) or None in list(df.columns.values):
+        if (len(df.index.names) > 1 and None in df.index.names) or None in list(
+            df.columns.values
+        ):
             raise Exception("All columns and indexes must be named")
 
         if df.index.names != [None]:
@@ -232,15 +236,20 @@ class FrametoArraySerializer(Serializer):
         if not isinstance(data, list):
             df = self.converter.objify(data, columns)
         else:
-            df = pd.concat([self.converter.objify(d, columns) for d in data], ignore_index=not index)
+            df = pd.concat(
+                [self.converter.objify(d, columns) for d in data],
+                ignore_index=not index,
+            )
 
         if index:
             df = df.set_index(meta[INDEX])
-        if meta[TYPE] == 'series':
+        if meta[TYPE] == "series":
             return df[df.columns[0]]
         return df
 
-    def combine(self, a: pd.DataFrame | pd.Series, b: pd.DataFrame | pd.Series) -> pd.DataFrame | pd.Series:
+    def combine(
+        self, a: pd.DataFrame | pd.Series, b: pd.DataFrame | pd.Series
+    ) -> pd.DataFrame | pd.Series:
         if a.index.names != [None]:
             return pd.concat([a, b]).sort_index()
         return pd.concat([a, b])

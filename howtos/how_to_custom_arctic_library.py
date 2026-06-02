@@ -6,7 +6,6 @@ import pickle
 from arctic import Arctic, register_library_type
 from arctic.decorators import mongo_retry
 
-
 #
 # Arctic maps a library, e.g. 'jblackburn.stuff' to a class instance
 # which implements whatever API you like.
@@ -24,6 +23,7 @@ class Stuff(object):
     """
     Some custom class persisted by our CustomArcticLibType Library Type
     """
+
     def __init__(self, field1, date_field, stuff):
         # Some string field
         self.field1 = field1
@@ -42,7 +42,7 @@ class CustomArcticLibType(object):
     """
 
     # Choose a library type name that's unique; e.g. <sector>.DataType
-    _LIBRARY_TYPE = 'test.CustomArcticLibType'
+    _LIBRARY_TYPE = "test.CustomArcticLibType"
 
     def __init__(self, arctic_lib):
         self._arctic_lib = arctic_lib
@@ -57,12 +57,12 @@ class CustomArcticLibType(object):
         print("My name is %s" % arctic_lib.get_name())
 
         # Fetch some per-library metadata for this library
-        self.some_metadata = arctic_lib.get_library_metadata('some_metadata')
+        self.some_metadata = arctic_lib.get_library_metadata("some_metadata")
 
     @classmethod
     def initialize_library(cls, arctic_lib, **kwargs):
         # Persist some per-library metadata in this arctic_lib
-        arctic_lib.set_library_metadata('some_metadata', 'some_value')
+        arctic_lib.set_library_metadata("some_metadata", "some_value")
         CustomArcticLibType(arctic_lib)._ensure_index()
 
     def _ensure_index(self):
@@ -71,7 +71,7 @@ class CustomArcticLibType(object):
         """
         collection = self._collection
         # collection.add_indexes
-        collection.create_index('field1')
+        collection.create_index("field1")
 
     ###########################################
     # Create your own API below!
@@ -89,8 +89,8 @@ class CustomArcticLibType(object):
         http://api.mongodb.org/python/current/api/pymongo/collection.html
         """
         for x in self._collection.find(*args, **kwargs):
-            x['stuff'] = pickle.loads(x['stuff'])
-            del x['_id'] # Remove default unique '_id' field from doc 
+            x["stuff"] = pickle.loads(x["stuff"])
+            del x["_id"]  # Remove default unique '_id' field from doc
             yield Stuff(**x)
 
     @mongo_retry
@@ -100,11 +100,9 @@ class CustomArcticLibType(object):
         """
         res = {}
         db = self._collection.database
-        res['dbstats'] = db.command('dbstats')
-        res['data'] = db.command('collstats', self._collection.name)
-        res['totals'] = {'count': res['data']['count'],
-                         'size': res['data']['size']
-                         }
+        res["dbstats"] = db.command("dbstats")
+        res["data"] = db.command("collstats", self._collection.name)
+        res["totals"] = {"count": res["data"]["count"], "size": res["data"]["size"]}
         return res
 
     @mongo_retry
@@ -112,11 +110,12 @@ class CustomArcticLibType(object):
         """
         Simple persistence method
         """
-        to_store = {'field1': thing.field1,
-                    'date_field': thing.date_field,
-                    }
-        to_store['stuff'] = Binary(pickle.dumps(thing.stuff))
-        # Respect any soft-quota on write - raises if stats().totals.size > quota 
+        to_store = {
+            "field1": thing.field1,
+            "date_field": thing.date_field,
+        }
+        to_store["stuff"] = Binary(pickle.dumps(thing.stuff))
+        # Respect any soft-quota on write - raises if stats().totals.size > quota
         self._arctic_lib.check_quota()
         self._collection.insert_one(to_store)
 
@@ -132,39 +131,38 @@ class CustomArcticLibType(object):
 register_library_type(CustomArcticLibType._LIBRARY_TYPE, CustomArcticLibType)
 
 # Create a Arctic instance pointed at a mongo host
-if 'mongo_host' not in globals():
-    mongo_host = 'localhost'
+if "mongo_host" not in globals():
+    mongo_host = "localhost"
 store = Arctic(mongo_host)
 
 # Initialize the library
 # Map username.custom_lib -> CustomArcticLibType
-store.initialize_library('username.custom_lib', CustomArcticLibType._LIBRARY_TYPE)
+store.initialize_library("username.custom_lib", CustomArcticLibType._LIBRARY_TYPE)
 
 # Now pull our username.custom_lib ; note that it has the:
 #   - query(...)
 #   - store(...)
 #   - delete(...)
 # API we defined above
-lib = store['username.custom_lib']
+lib = store["username.custom_lib"]
 
 
 # Store some items in the custom library type
-lib.store(Stuff('thing', dt(2012, 1, 1), object()))
-lib.store(Stuff('thing2', dt(2013, 1, 1), object()))
-lib.store(Stuff('thing3', dt(2014, 1, 1), object()))
-lib.store(Stuff(['a', 'b', 'c'], dt(2014, 1, 1), object()))
+lib.store(Stuff("thing", dt(2012, 1, 1), object()))
+lib.store(Stuff("thing2", dt(2013, 1, 1), object()))
+lib.store(Stuff("thing3", dt(2014, 1, 1), object()))
+lib.store(Stuff(["a", "b", "c"], dt(2014, 1, 1), object()))
 
 
 # Do some querying via our library's query method.
 # You would have your own methods for querying here... (which use your index(es), of course)
-for e in list(lib.query()): # list everything
+for e in list(lib.query()):  # list everything
     print(e)
-list(lib.query({'field1': 'thing'})) # just get by name
-list(lib.query({'field1': 'a'}))     # Can query lists
-list(lib.query({'field1': 'b'}))
-list(lib.query({'date_field': {'$lt': dt(2013, 2, 2)}}))
-list(lib.query({'field1': 'thing',
-                  'date_field': {'$lt': dt(2013, 2, 2)} }))
+list(lib.query({"field1": "thing"}))  # just get by name
+list(lib.query({"field1": "a"}))  # Can query lists
+list(lib.query({"field1": "b"}))
+list(lib.query({"date_field": {"$lt": dt(2013, 2, 2)}}))
+list(lib.query({"field1": "thing", "date_field": {"$lt": dt(2013, 2, 2)}}))
 
 # Remove everything
 lib.delete({})

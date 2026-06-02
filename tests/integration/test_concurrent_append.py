@@ -29,21 +29,22 @@ class Appender(object):
         while datetime.now() < self.timeout:
             try:
                 # Randomy length dataframe to keep appending to
-                df = DataFrame({'v': [self.last]}, [datetime.now()])
+                df = DataFrame({"v": [self.last]}, [datetime.now()])
                 for i in range(random.randint(1, 10)):
-                    df = df.append(DataFrame({'v': [self.last + i]}, [datetime.now()]))
+                    df = df.append(DataFrame({"v": [self.last + i]}, [datetime.now()]))
                 self.last + i
-                df.index.name = 'index'
-                self.lib.append('symbol', df)
-                assert self.last in self.lib.read('symbol').data['v'].tolist()
+                df.index.name = "index"
+                self.lib.append("symbol", df)
+                assert self.last in self.lib.read("symbol").data["v"].tolist()
                 self.last += 2
             except OptimisticLockException:
                 # Concurrent write, not successful
                 pass
-#             time.sleep(self.begin)
+
+    #             time.sleep(self.begin)
 
     def check_written_data_exists(self):
-        values = self.lib.read('symbol').data['v'].tolist()
+        values = self.lib.read("symbol").data["v"].tolist()
         assert len(set(values)) == len(values), "Written: %s" % values
         i = self.begin
         while i < self.last:
@@ -53,9 +54,9 @@ class Appender(object):
 
 def test_append_kill(library, mongo_host, library_name):
     # Empty DF to start
-    df = DataFrame({'v': []}, [])
-    df.index.name = 'index'
-    library.write('symbol', df)
+    df = DataFrame({"v": []}, [])
+    df.index.name = "index"
+    library.write("symbol", df)
 
     sem = Semaphore(0)
 
@@ -67,7 +68,7 @@ def test_append_kill(library, mongo_host, library_name):
         return proc
 
     def check_written():
-        sym = library.read('symbol')
+        sym = library.read("symbol")
         print("Checking written %d" % len(sym.data))
 
     # time how long it takes to do an append operation
