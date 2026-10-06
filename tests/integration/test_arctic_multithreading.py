@@ -1,6 +1,6 @@
 import os
 import time
-from multiprocessing import Process
+from multiprocessing import get_all_start_methods, get_context
 from random import random
 
 import pytest
@@ -13,9 +13,14 @@ from arctic.store.version_store import VersionStore
 MY_ARCTIC = None  # module-level Arctic singleton
 AUTH_COUNT = 0
 
-pytestmark = pytest.mark.filterwarnings(
-    "ignore:This process .* is multi-threaded, use of fork\\(\\) may lead to deadlocks in the child.:DeprecationWarning"
-)
+pytestmark = [
+    pytest.mark.skipif(
+        "fork" not in get_all_start_methods(), reason="requires fork inheritance"
+    ),
+    pytest.mark.filterwarnings(
+        "ignore:This process .* is multi-threaded, use of fork\\(\\) may lead to deadlocks in the child.:DeprecationWarning"
+    ),
+]
 
 
 def f(library_name, total_writes, do_reset):
@@ -64,8 +69,10 @@ def test_multiprocessing_safety(mongo_host, library_name):
     MY_ARCTIC.initialize_library(library_name, VERSION_STORE)
     assert isinstance(MY_ARCTIC.get_library(library_name), VersionStore)
 
+    # Exercise inherited clients; Python 3.14 defaults to forkserver on Linux.
+    context = get_context("fork")
     processes = [
-        Process(target=f, args=(library_name, total_writes_per_child, True))
+        context.Process(target=f, args=(library_name, total_writes_per_child, True))
         for _ in range(total_processes)
     ]
 
@@ -90,12 +97,16 @@ def test_multiprocessing_safety_parent_children_race(mongo_host, library_name):
 
     global MY_ARCTIC
 
+    # Fork the parent directly so children inherit its Arctic singleton.
+    context = get_context("fork")
     for i in range(total_iterations):
         processes = list()
 
         MY_ARCTIC = Arctic(mongo_host=mongo_host)
         for j in range(total_processes):
-            p = Process(target=f, args=(library_name, total_writes_per_child, False))
+            p = context.Process(
+                target=f, args=(library_name, total_writes_per_child, False)
+            )
             p.start()  # start directly, don't wait to create first all children procs
             processes.append(p)
 
