@@ -229,32 +229,32 @@ def test_default_mongo_retry_timout():
 
 def test_lib_rename(arctic):
     arctic.initialize_library("test")
-    l = arctic["test"]
-    l.write("test_data", "abc")
+    library = arctic["test"]
+    library.write("test_data", "abc")
     arctic.rename_library("test", "new_name")
-    l = arctic["new_name"]
-    assert l.read("test_data").data == "abc"
+    library = arctic["new_name"]
+    assert library.read("test_data").data == "abc"
     with pytest.raises(LibraryNotFoundException) as e:
-        l = arctic["test"]
+        arctic["test"]
     assert "Library test" in str(e.value)
     assert "test" not in arctic.list_libraries()
 
 
 def test_lib_rename_namespace(arctic):
     arctic.initialize_library("namespace.test")
-    l = arctic["namespace.test"]
-    l.write("test_data", "abc")
+    library = arctic["namespace.test"]
+    library.write("test_data", "abc")
 
     with pytest.raises(ValueError) as e:
         arctic.rename_library("namespace.test", "new_namespace.test")
     assert "Collection can only be renamed in the same database" in str(e.value)
 
     arctic.rename_library("namespace.test", "namespace.newlib")
-    l = arctic["namespace.newlib"]
-    assert l.read("test_data").data == "abc"
+    library = arctic["namespace.newlib"]
+    assert library.read("test_data").data == "abc"
 
     with pytest.raises(LibraryNotFoundException) as e:
-        l = arctic["namespace.test"]
+        arctic["namespace.test"]
     assert "Library namespace.test" in str(e.value)
     assert "namespace.test" not in arctic.list_libraries()
 

@@ -7,7 +7,7 @@ import pandas as pd
 import pymongo
 import pytest
 from pandas import DataFrame, MultiIndex, Index, Series
-from pandas.testing import assert_frame_equal, assert_series_equal
+from pandas.testing import assert_series_equal
 
 from arctic._util import mongo_count
 from arctic.chunkstore.chunkstore import START, SYMBOL
@@ -1384,7 +1384,7 @@ def test_metadata_none(chunkstore_lib):
     )
     df.index.name = "date"
     chunkstore_lib.write("data", df, chunk_size="M")
-    assert chunkstore_lib.read_metadata("data") == None
+    assert chunkstore_lib.read_metadata("data") is None
 
 
 def test_metadata_invalid(chunkstore_lib):

@@ -301,7 +301,7 @@ class PandasSerializer(object):
             If any object dtypes are detected in columns or index will return a dict with field-name -> dtype
              mappings, and empty dict otherwise.
         """
-        i_dtype, f_dtypes = df.index.dtype, df.dtypes
+        f_dtypes = df.dtypes
         index_has_object = df.index.dtype is NP_OBJECT_DTYPE
         fields_with_object = [f for f in df.columns if f_dtypes[f] is NP_OBJECT_DTYPE]
         if df.empty or (not index_has_object and not fields_with_object):
@@ -388,7 +388,7 @@ class SeriesSerializer(PandasSerializer):
                     text_indexes.append(_index)
                 index = text_indexes
             else:
-                if len(index) and type(index[0]) == bytes:
+                if len(index) and type(index[0]) is bytes:
                     index = index.astype("unicode")
 
         if PD_VER < "0.23.0":
@@ -458,7 +458,7 @@ class DataFrameSerializer(PandasSerializer):
                 # which is converted to u"b'abc'" i.e it includes the b character as well! This generally happens
                 # when there is a str conversion without specifying the encoding. eg. str(b'abc') -> "b'abc'" and the
                 # fix for this is to tell it the encoding to use: i.e str(b'abc', 'utf-8') -> "abc"
-                if type(df[c].iloc[0]) == bytes:
+                if type(df[c].iloc[0]) is bytes:
                     df[c] = df[c].str.decode("utf-8")
 
             if isinstance(df.index, MultiIndex):
@@ -471,10 +471,10 @@ class DataFrameSerializer(PandasSerializer):
                     text_indexes.append(_index)
                 df.index = text_indexes
             else:
-                if type(df.index[0]) == bytes:
+                if type(df.index[0]) is bytes:
                     df.index = df.index.astype("unicode")
 
-            if not df.columns.empty and type(df.columns[0]) == bytes:
+            if not df.columns.empty and type(df.columns[0]) is bytes:
                 df.columns = df.columns.astype("unicode")
 
         return df

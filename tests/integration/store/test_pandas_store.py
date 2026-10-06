@@ -23,7 +23,7 @@ from arctic._compression import decompress
 from arctic.date import DateRange, mktz
 
 # Do not remove PandasStore, used in global scope
-from arctic.store._pandas_ndarray_store import (
+from arctic.store._pandas_ndarray_store import (  # noqa: F401
     PandasDataFrameStore,
     PandasSeriesStore,
     PandasStore,
@@ -149,7 +149,7 @@ def test_cant_write_pandas_series_with_tuple_values(library):
             ]
         ).astype("datetime64[ns]"),
     )
-    assert PandasSeriesStore().can_write(Mock(), "FOO", df) == False
+    assert PandasSeriesStore().can_write(Mock(), "FOO", df) is False
 
 
 def test_save_read_pandas_series_with_datetimeindex_with_timezone(library):
@@ -1416,11 +1416,11 @@ def test_forced_encodings_with_df_bytes(library):
 
     # ===================BEFORE===================
     df = pd.DataFrame(sample_data, index=[b"str_type", b"uni_type"])
-    assert type(df["str_col"].iloc[0]) == bytes
-    assert type(df["unicode_col"].iloc[0]) == text_type
+    assert type(df["str_col"].iloc[0]) is bytes
+    assert type(df["unicode_col"].iloc[0]) is text_type
     # Check that all column names are stored as as is by pandas
-    assert all([type(x) == text_type for x in df.columns])
-    assert all([type(x) == bytes for x in df.index])
+    assert all([type(x) is text_type for x in df.columns])
+    assert all([type(x) is bytes for x in df.index])
 
     library.write("dummy", df)
     library.write("dummy_str_col", df["str_col"])
@@ -1431,19 +1431,19 @@ def test_forced_encodings_with_df_bytes(library):
     s_str_normal = library.read("dummy_str_col").data
     s_unicode_normal = library.read("dummy_unicode_col").data
 
-    assert type(df_normal["str_col"].iloc[0]) == bytes
-    assert type(df_normal["unicode_col"].iloc[0]) == text_type
+    assert type(df_normal["str_col"].iloc[0]) is bytes
+    assert type(df_normal["unicode_col"].iloc[0]) is text_type
     assert isinstance(s_str_normal.values[0], bytes)
-    assert type(s_unicode_normal.values[0]) == text_type
+    assert type(s_unicode_normal.values[0]) is text_type
 
     # Arctic currently converts all column to text_type and will keep index type as is
-    assert type(s_str_normal.name) == text_type
-    assert type(s_unicode_normal.name) == text_type
-    assert all([type(x) == text_type for x in df_normal.columns])
+    assert type(s_str_normal.name) is text_type
+    assert type(s_unicode_normal.name) is text_type
+    assert all([type(x) is text_type for x in df_normal.columns])
 
-    assert all([type(x) == bytes for x in df_normal.index])
-    assert all([type(x) == bytes for x in s_str_normal.index])
-    assert all([type(x) == bytes for x in s_unicode_normal.index])
+    assert all([type(x) is bytes for x in df_normal.index])
+    assert all([type(x) is bytes for x in s_str_normal.index])
+    assert all([type(x) is bytes for x in s_unicode_normal.index])
 
     # ===================READ BACK WITH FORCED ENCODING===================
     df_forced_unicode = library.read("dummy", force_bytes_to_unicode=True).data
@@ -1452,19 +1452,19 @@ def test_forced_encodings_with_df_bytes(library):
         "dummy_unicode_col", force_bytes_to_unicode=True
     ).data
 
-    assert type(df_forced_unicode["str_col"].iloc[0]) == text_type
-    assert type(df_forced_unicode["unicode_col"].iloc[0]) == text_type
-    assert type(s_str_forced.values[0]) == text_type
-    assert type(s_unicode_forced.values[0]) == text_type
+    assert type(df_forced_unicode["str_col"].iloc[0]) is text_type
+    assert type(df_forced_unicode["unicode_col"].iloc[0]) is text_type
+    assert type(s_str_forced.values[0]) is text_type
+    assert type(s_unicode_forced.values[0]) is text_type
 
     # Should force everything to text_type now.
-    assert type(s_str_forced.name) == text_type
-    assert type(s_unicode_forced.name) == text_type
-    assert all([type(x) == text_type for x in df_forced_unicode.columns])
+    assert type(s_str_forced.name) is text_type
+    assert type(s_unicode_forced.name) is text_type
+    assert all([type(x) is text_type for x in df_forced_unicode.columns])
 
-    assert all([type(x) == text_type for x in df_forced_unicode.index])
-    assert all([type(x) == text_type for x in s_str_forced.index])
-    assert all([type(x) == text_type for x in s_unicode_forced.index])
+    assert all([type(x) is text_type for x in df_forced_unicode.index])
+    assert all([type(x) is text_type for x in s_str_forced.index])
+    assert all([type(x) is text_type for x in s_unicode_forced.index])
 
 
 def test_forced_encodings_with_df_bytes_multi_index(library):
@@ -1478,7 +1478,7 @@ def test_forced_encodings_with_df_bytes_multi_index(library):
     def _assert_index_type(index, t_type):
         assert all(
             [
-                type(index.get_level_values(level)[0]) == t_type
+                type(index.get_level_values(level)[0]) is t_type
                 for level in range(len(index.levels))
             ]
         )
@@ -1490,13 +1490,13 @@ def test_forced_encodings_with_df_bytes_multi_index(library):
             [(b"ele1", b"uni_type1"), (b"ele2", b"uni_type2")]
         ),
     )
-    assert type(multi_index_df["str_col"].iloc[0]) == bytes
-    assert type(multi_index_df["unicode_col"].iloc[0]) == text_type
+    assert type(multi_index_df["str_col"].iloc[0]) is bytes
+    assert type(multi_index_df["unicode_col"].iloc[0]) is text_type
     # Check that all column names are stored as as is by pandas
-    assert all([type(x) == text_type for x in multi_index_df.columns])
+    assert all([type(x) is text_type for x in multi_index_df.columns])
     assert all(
         [
-            type(multi_index_df.index.get_level_values(level)[0]) == bytes
+            type(multi_index_df.index.get_level_values(level)[0]) is bytes
             for level in range(len(multi_index_df.index.levels))
         ]
     )
@@ -1510,15 +1510,15 @@ def test_forced_encodings_with_df_bytes_multi_index(library):
     s_str_col = library.read("dummy_str_col").data
     s_unicode_col = library.read("dummy_unicode_col").data
 
-    assert type(df_normal["str_col"].iloc[0]) == bytes
-    assert type(df_normal["unicode_col"].iloc[0]) == text_type
+    assert type(df_normal["str_col"].iloc[0]) is bytes
+    assert type(df_normal["unicode_col"].iloc[0]) is text_type
     assert isinstance(s_str_col.values[0], bytes)
-    assert type(s_unicode_col.values[0]) == text_type
+    assert type(s_unicode_col.values[0]) is text_type
 
     # Arctic currently converts all column to text_type and will keep index type as is
-    assert type(s_str_col.name) == text_type
-    assert type(s_unicode_col.name) == text_type
-    assert all([type(x) == text_type for x in df_normal.columns])
+    assert type(s_str_col.name) is text_type
+    assert type(s_unicode_col.name) is text_type
+    assert all([type(x) is text_type for x in df_normal.columns])
 
     _assert_index_type(df_normal.index, bytes)
     _assert_index_type(s_str_col.index, bytes)
@@ -1531,15 +1531,15 @@ def test_forced_encodings_with_df_bytes_multi_index(library):
         "dummy_unicode_col", force_bytes_to_unicode=True
     ).data
 
-    assert type(df_forced_unicode["str_col"].iloc[0]) == text_type
-    assert type(df_forced_unicode["unicode_col"].iloc[0]) == text_type
-    assert type(s_str_forced.values[0]) == text_type
-    assert type(s_unicode_forced.values[0]) == text_type
+    assert type(df_forced_unicode["str_col"].iloc[0]) is text_type
+    assert type(df_forced_unicode["unicode_col"].iloc[0]) is text_type
+    assert type(s_str_forced.values[0]) is text_type
+    assert type(s_unicode_forced.values[0]) is text_type
 
     # Should force everything to text_type now.
-    assert all([type(x) == text_type for x in df_forced_unicode.columns])
-    assert type(s_str_forced.name) == text_type
-    assert type(s_unicode_forced.name) == text_type
+    assert all([type(x) is text_type for x in df_forced_unicode.columns])
+    assert type(s_str_forced.name) is text_type
+    assert type(s_unicode_forced.name) is text_type
 
     _assert_index_type(df_forced_unicode.index, text_type)
     _assert_index_type(s_str_forced.index, text_type)

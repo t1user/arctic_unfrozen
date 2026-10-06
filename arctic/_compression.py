@@ -9,7 +9,7 @@ try:
     def lz4_compressHC(_str: bytes) -> bytes:
         return cast(bytes, lz4_compress(_str, mode="high_compression"))
 
-except ImportError as e:
+except ImportError:
     from lz4 import (  # type: ignore[no-redef]
         compress as lz4_compress,
         compressHC as lz4_compressHC,

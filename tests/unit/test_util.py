@@ -1,9 +1,8 @@
-from mock import MagicMock, ANY, patch
+from mock import MagicMock, ANY
 import pandas as pd
 
 from arctic._util import are_equals, enable_sharding, mongo_count
 from arctic.arctic import Arctic
-import arctic._util
 
 
 def test_are_equals_not_df():

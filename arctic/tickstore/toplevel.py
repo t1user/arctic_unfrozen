@@ -178,7 +178,7 @@ overlapping libraries: {}""".format(
                     include_images=include_images,
                 )
                 dfs.append(df)
-            except NoDataFoundException as e:
+            except NoDataFoundException:
                 continue
         if len(dfs) == 0:
             raise NoDataFoundException(

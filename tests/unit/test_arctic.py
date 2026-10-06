@@ -144,7 +144,7 @@ def test_arctic_auth_custom_app_name():
 def test_arctic_connect_hostname():
     with (
         patch("pymongo.MongoClient", return_value=MagicMock(), autospec=True) as mc,
-        patch("arctic.arctic.mongo_retry", autospec=True) as ar,
+        patch("arctic.arctic.mongo_retry", autospec=True),
         patch("arctic._cache.Cache._is_not_expired", return_value=True),
         patch("arctic.arctic.get_mongodb_uri", autospec=True) as gmu,
     ):
@@ -168,7 +168,7 @@ def test_arctic_connect_hostname():
 def test_arctic_connect_with_environment_name():
     with (
         patch("pymongo.MongoClient", return_value=MagicMock(), autospec=True) as mc,
-        patch("arctic.arctic.mongo_retry", autospec=True) as ar,
+        patch("arctic.arctic.mongo_retry", autospec=True),
         patch("arctic.arctic.get_auth", autospec=True, return_value=None),
         patch("arctic._cache.Cache._is_not_expired", return_value=True),
         patch("arctic.arctic.get_mongodb_uri") as gmfe,
@@ -418,7 +418,7 @@ def test_initialize_library_too_many_ns():
             patch.dict("arctic.arctic.LIBRARY_TYPES", {sentinel.lib_type: lib_type}),
             patch(
                 "arctic.arctic.ArcticLibraryBinding", return_value=lib, autospec=True
-            ) as ML,
+            ),
         ):
             Arctic.initialize_library(
                 self, sentinel.lib_name, sentinel.lib_type, thing=sentinel.thing
@@ -583,7 +583,7 @@ def test__conn_auth_issue():
 def test_reset():
     c = MagicMock()
     with (
-        patch("pymongo.MongoClient", return_value=c, autospec=True) as mc,
+        patch("pymongo.MongoClient", return_value=c, autospec=True),
         patch("arctic._cache.Cache._is_not_expired", return_value=True),
     ):
         store = Arctic("hostname")

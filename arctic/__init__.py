@@ -1,16 +1,24 @@
 """The Arctic TimeSeries and Tick store."""
 
-import pandas
-
-__version__: str | None
-__version_parts__: tuple[int, ...]
-__version_numerical__: int
-
 from .arctic import Arctic, register_library_type
 from .arctic import VERSION_STORE, TICK_STORE, CHUNK_STORE
 from .store._ndarray_store import NdarrayStore
 from .store._pandas_ndarray_store import PandasDataFrameStore, PandasSeriesStore
 from .store.version_store import register_versioned_storage, register_version
+
+__all__ = [
+    "Arctic",
+    "CHUNK_STORE",
+    "PandasDataFrameStore",
+    "PandasSeriesStore",
+    "TICK_STORE",
+    "VERSION_STORE",
+    "register_library_type",
+]
+
+__version__: str | None
+__version_parts__: tuple[int, ...]
+__version_numerical__: int
 
 try:
     from pkg_resources import get_distribution

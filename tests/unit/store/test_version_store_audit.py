@@ -270,7 +270,7 @@ def test_ArcticTransaction_does_nothing_when_data_is_None():
     )
     vs.list_versions.return_value = [{"version": 1}, {"version": 2}]
 
-    with ArcticTransaction(vs, sentinel.symbol, sentinel.user, sentinel.log) as cwb:
+    with ArcticTransaction(vs, sentinel.symbol, sentinel.user, sentinel.log):
         pass
     assert not vs._delete_version.called
     assert not vs.write.called
@@ -301,7 +301,7 @@ def test_ArcticTransaction_guards_against_inconsistent_ts():
     with pytest.raises(ConcurrentModificationException):
         with ArcticTransaction(
             vs, sentinel.symbol, sentinel.user, sentinel.log, modify_timeseries=ts1
-        ) as cwb:
+        ):
             pass
 
 

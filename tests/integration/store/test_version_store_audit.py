@@ -202,8 +202,8 @@ def test_corrupted_read_writes_new(library):
     res = library.read(symbol)
     assert res.version == 2
 
-    with patch.object(library, "read") as l:
-        l.side_effect = OperationFailure("some failure")
+    with patch.object(library, "read") as read:
+        read.side_effect = OperationFailure("some failure")
         with ArcticTransaction(library, symbol, "u1", "l2") as mt:
             mt.write(symbol, ts3, metadata={"a": 1, "b": 2})
 
@@ -213,8 +213,8 @@ def test_corrupted_read_writes_new(library):
     assert_frame_equal(ts3, library.read(symbol, 3).data)
     assert res.metadata == {"a": 1, "b": 2}
 
-    with patch.object(library, "read") as l:
-        l.side_effect = OperationFailure("some failure")
+    with patch.object(library, "read") as read:
+        read.side_effect = OperationFailure("some failure")
         with ArcticTransaction(library, symbol, "u1", "l2") as mt:
             mt.write(symbol, ts3, metadata={"a": 1, "b": 2})
 

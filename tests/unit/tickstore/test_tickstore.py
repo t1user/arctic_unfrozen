@@ -198,7 +198,7 @@ def test_tickstore_to_bucket_always_forwards_image():
         "C": "DESC",
     }
     data = [{"index": dt(2014, 1, 1, 0, 1, tzinfo=mktz(tz)), "A": 124, "D": 0}]
-    with pytest.raises(UnorderedDataException) as e:
+    with pytest.raises(UnorderedDataException):
         TickStore._to_bucket(data, symbol, initial_image)
 
 

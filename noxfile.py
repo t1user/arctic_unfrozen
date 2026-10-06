@@ -39,6 +39,12 @@ def black(session):
 
 
 @nox.session
+def flake8(session):
+    session.install("flake8")
+    session.run("python", "-m", "flake8", "arctic", "tests")
+
+
+@nox.session
 def integration(session):
     _run_pytest(session, "tests/integration")
 

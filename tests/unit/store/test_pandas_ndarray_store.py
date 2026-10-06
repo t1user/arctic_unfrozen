@@ -1,7 +1,10 @@
 import numpy as np
 
 # Do not remove PandasStore
-from arctic.store._pandas_ndarray_store import PandasDataFrameStore, PandasStore
+from arctic.store._pandas_ndarray_store import (  # noqa: F401
+    PandasDataFrameStore,
+    PandasStore,
+)
 from tests.util import read_str_as_pandas
 
 

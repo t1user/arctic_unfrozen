@@ -20,8 +20,8 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
 - Preserve the one-time Black formatting baseline; keep later formatting changes
   narrow and scoped to touched files.
 - Keep Black, flake8, and pycodestyle aligned on an 88-character line length.
-  Enforce Black formatting in CI and clean up the remaining full-repository lint
-  baseline incrementally.
+  Enforce Black and flake8 in CI. Revisit the remaining temporary style-rule
+  exceptions incrementally.
 
 ## 3. Modernize Compatibility Hotspots
 
