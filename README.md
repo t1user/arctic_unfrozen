@@ -41,6 +41,13 @@ original setup and usage guide remains available in
 [README-arctic.md](README-arctic.md) while the documentation is refreshed for
 Arctic Unfrozen.
 
+## Supported versions
+
+Python 3.10 through 3.14 are supported. CI installs the latest compatible
+pandas, NumPy, and PyMongo releases for each Python version. PyMongo 4.17 or
+newer within the 4.x series is required. pandas remains unpinned so Python 3.10
+can use pandas 2.x while newer Python versions use pandas 3.x.
+
 ## Development
 
 Install the package and development tools:

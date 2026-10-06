@@ -2,7 +2,7 @@
 
 ## Purpose & Procedure
 
-Project's purpose is to revive this long unmaintained repo. The target is to make it use latest version of dependencies including current version of python, mongo, pymongo, pandas and numpy. Supported Python versions are currently 3.10 through 3.13. It's paramount not to break any functionality and keep existing interface. Subsequently new functionality and additional interface points may be added but it should be done while keeping full backwards compatibility. Don't make sweeping changes all at once, focus on the requested change. If warranted you may suggest next steps to achieve the overall purpose.
+Project's purpose is to revive this long unmaintained repo. The target is to make it use latest version of dependencies including current version of python, mongo, pymongo, pandas and numpy. Supported Python versions are currently 3.10 through 3.14. It's paramount not to break any functionality and keep existing interface. Subsequently new functionality and additional interface points may be added but it should be done while keeping full backwards compatibility. Don't make sweeping changes all at once, focus on the requested change. If warranted you may suggest next steps to achieve the overall purpose.
 
 Use `PLAN.md` as the durable roadmap for sequencing modernization work. Keep it updated when priorities, supported versions, or CI strategy change.
 
@@ -19,7 +19,7 @@ This repository contains Arctic Unfrozen, the maintained distribution of the leg
 ## Build, Test, and Development Commands
 
 - `python -m pip install -e .[test,dev]`: install Arctic plus test and development tooling into the active virtualenv.
-- `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 through 3.13.
+- `python -m pytest tests/unit`: run the unit-test baseline used by GitHub Actions on Python 3.10 through 3.14.
 - `python -m pytest`: run the full local suite, including MongoDB-backed integration tests. This took about 8 minutes on Python 3.13 in May 2026 and requires a reachable MongoDB test instance or local `mongod`.
 - `python -m nox -s unit`: run the unit-test CI session on the active Python.
 - `python -m nox -s black`: check repository formatting with Black using the same command as GitHub Actions.
@@ -56,7 +56,7 @@ Use Black's standard formatting defaults, including its 88-character line length
 
 Use `pytest`. Put fast isolated tests in `tests/unit/` and MongoDB-backed or end-to-end coverage in `tests/integration/`. Name test files `test_*.py` and test functions `test_*`. Add focused regression tests near the affected module, for example `tests/unit/chunkstore/` for `arctic/chunkstore/` changes. If an integration test needs external services, state that clearly in the PR.
 
-GitHub Actions currently runs `nox` Black, Flake8, mypy, unit, integration-smoke, and full MongoDB-backed integration sessions. Black, Flake8, and mypy run once; unit and integration jobs run on Python 3.10 through 3.13. MongoDB jobs use MongoDB 8.3.2 through a GitHub Actions service container. Full integration is blocking in CI, so keep local verification focused before pushing. Integration tests erase every non-system database on the configured server. Point `ARCTIC_TEST_MONGO_HOST` only at a disposable test instance, never at a live MongoDB server.
+GitHub Actions currently runs `nox` Black, Flake8, mypy, unit, integration-smoke, and full MongoDB-backed integration sessions. Black, Flake8, and mypy run once; unit and integration jobs run on Python 3.10 through 3.14. MongoDB jobs use MongoDB 8.3.2 through a GitHub Actions service container. Full integration is blocking in CI, so keep local verification focused before pushing. Integration tests erase every non-system database on the configured server. Point `ARCTIC_TEST_MONGO_HOST` only at a disposable test instance, never at a live MongoDB server.
 
 Documentation is published at `https://arctic-unfrozen.readthedocs.io/`. GitHub Actions and Read the Docs both run a strict MkDocs build using the pinned dependencies in `docs/requirements.txt`.
 

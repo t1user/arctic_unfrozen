@@ -15,10 +15,11 @@ distribution onto a current Python and MongoDB stack.
  * Docs: publish maintained documentation at Read the Docs and validate strict MkDocs builds in CI.
 
 #### Supported runtime stack
- * Compatibility: support and test Python 3.10 through 3.13. Python 2 runtimes and Python 2-only serialized data are no longer compatibility targets.
+ * Compatibility: support and test Python 3.10 through 3.14. Python 2 runtimes and Python 2-only serialized data are no longer compatibility targets.
  * Compatibility: remove obsolete Python 2 shims and stale pandas `Panel` compatibility paths.
  * Compatibility: replace `pytz` usage with the standard-library `zoneinfo` implementation and retain `tzdata` for Windows.
  * Compatibility: update code paths for current pandas and NumPy releases, including removed NumPy aliases, pandas sorting behavior, index metadata handling, dataframe comparisons, and timezone behavior.
+ * Compatibility: pass the unit suite on Python 3.14 with pandas 3.0.6 and PyMongo 4.18.2; retain dependency ranges compatible with older supported Python versions.
  * Compatibility: require `pymongo>=4.17,<5` and test MongoDB-backed behavior against MongoDB 8.3.2.
 
 #### PyMongo 4 and MongoDB 8.3
@@ -30,7 +31,7 @@ distribution onto a current Python and MongoDB stack.
 
 #### CI, development, and verification
  * CI: replace the legacy CI setup with GitHub Actions and `nox` sessions that contributors can run locally.
- * CI: run unit tests and MongoDB-backed integration smoke tests on Python 3.10, 3.11, 3.12, and 3.13.
+ * CI: run unit tests and MongoDB-backed integration smoke tests on Python 3.10, 3.11, 3.12, 3.13, and 3.14.
  * CI: make the full MongoDB-backed integration suite blocking across the supported Python matrix.
  * CI: use isolated MongoDB 8.3.2 service containers with a health check and `nofile=64000:64000` limit for WiredTiger.
  * Development: document an ephemeral Docker MongoDB workflow for local integration tests. Integration fixtures erase non-system databases, so they must never target a live server.

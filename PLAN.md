@@ -7,7 +7,10 @@ Python, pandas, numpy, pymongo, and MongoDB versions.
 
 ## 1. Keep the Unit Baseline Green
 
-- Maintain GitHub Actions for Python 3.10 through 3.13.
+- Maintain GitHub Actions for Python 3.10 through 3.14.
+- Install the latest compatible pandas, NumPy, and PyMongo releases in CI.
+  Retain Python 3.10 coverage with pandas 2.x alongside pandas 3.x on newer
+  Python versions.
 - Keep `python -m pytest tests/unit` passing before broadening scope.
 - Prefer small regression tests near the touched module.
 - Use `nox` so contributors can run CI-equivalent checks before pushing.
