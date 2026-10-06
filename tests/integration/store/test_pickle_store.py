@@ -1,4 +1,12 @@
-from datetime import datetime as dt, timedelta, timezone
+import pickle
+from datetime import date, datetime as dt, timedelta, timezone
+
+import pandas as pd
+import pytest
+
+from arctic._compression import compress
+from arctic.date import DateRange
+from arctic.store._version_store_utils import checksum
 
 import bson
 import numpy as np
@@ -129,3 +137,74 @@ def test_write_metadata(library):
     v = library.read("symX")
     assert v.data == blob
     assert v.metadata == {"key2": "value2"}
+
+
+@pytest.mark.parametrize(
+    "layout", ["current", "inline", "__chunked__", "__chunked__V2"]
+)
+@pytest.mark.parametrize(
+    "bounds,positions",
+    [
+        (DateRange(date(2020, 1, 2), date(2020, 1, 3)), [1, 2]),
+        (DateRange(dt(2020, 1, 2), dt(2020, 1, 3)), [1, 2]),
+        (DateRange(dt(2020, 1, 2, 12), dt(2020, 1, 3, 12)), [2]),
+        (DateRange(start=date(2020, 1, 2)), [1, 2]),
+        (DateRange(end=date(2020, 1, 2)), [0, 1]),
+        (DateRange(date(2020, 1, 2), date(2020, 1, 2)), [1]),
+        (DateRange(start=date(2021, 1, 1)), []),
+        (DateRange(end=date(2019, 1, 1)), []),
+    ],
+)
+def test_daily_date_range_legacy_storage(library, layout, bounds, positions):
+    """Read legacy document layouts on the disposable MongoDB fixture only."""
+    frame = pd.DataFrame(
+        {"v": [1, 2, 3]},
+        index=pd.Index(
+            [date(2020, 1, day) for day in (1, 2, 3)], dtype=object, name="day"
+        ),
+    )
+    frame.attrs = {"source": "daily"}
+    metadata = {"frequency": "daily"}
+    library.write("daily", frame, metadata=metadata)
+    assert library.get_info("daily")["handler"] == "PickleStore"
+    if layout != "current":
+        # Construct historical storage envelopes directly, rather than calling
+        # the current serializer/writer to generate the fixture under test.
+        versions = library._collection.versions
+        version = versions.find_one({"symbol": "daily"})
+        parent = version.get("base_version_id", version["_id"])
+        library._collection.delete_many({"symbol": "daily"})
+        payload = pickle.dumps(frame, protocol=2)
+        if layout == "inline":
+            blob = bson.Binary(compress(payload))
+        else:
+            blob = layout
+            if layout == "__chunked__":
+                payload = compress(payload)
+                chunks = [payload[:17], payload[17:]]
+            else:
+                chunks = [compress(payload[:17]), compress(payload[17:])]
+            library._collection.insert_many(
+                [
+                    {
+                        "symbol": "daily",
+                        "parent": [parent],
+                        "segment": i,
+                        "data": bson.Binary(chunk),
+                        "sha": checksum(
+                            "daily", {"segment": i, "data": bson.Binary(chunk)}
+                        ),
+                    }
+                    for i, chunk in enumerate(chunks)
+                ]
+            )
+        versions.update_one({"_id": version["_id"]}, {"$set": {"blob": blob}})
+    before = list(library._collection.versions.find({"symbol": "daily"}))
+    segments = list(library._collection.find({"symbol": "daily"}))
+    result = library.read("daily", date_range=bounds)
+    pd.testing.assert_frame_equal(result.data, frame.iloc[positions])
+    assert result.data.attrs == frame.attrs
+    assert result.metadata == metadata
+    pd.testing.assert_frame_equal(library.read("daily").data, frame)
+    assert list(library._collection.versions.find({"symbol": "daily"})) == before
+    assert list(library._collection.find({"symbol": "daily"})) == segments

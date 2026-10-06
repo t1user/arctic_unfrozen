@@ -1,89 +1,126 @@
 import random
+import signal
 import time
 from datetime import datetime, timedelta
-from multiprocessing import Process, Semaphore
+from multiprocessing import Pipe, Process
 
 import pytest
-from pandas.core.frame import DataFrame
+from pandas import DataFrame, DatetimeIndex, Series
+from pandas.testing import assert_frame_equal
 
 from arctic.arctic import Arctic
-from arctic.exceptions import OptimisticLockException
 
 pytestmark = pytest.mark.filterwarnings(
     "ignore:This process .* is multi-threaded, use of fork\\(\\) may lead to deadlocks in the child.:DeprecationWarning"
 )
 
 
-class Appender(object):
+class Appender:
+    """Append sequential batches and report only successfully verified writes."""
 
-    def __init__(self, mongo_server, library_name, sem, counter_init, runtime=30):
-        super(Appender, self).__init__()
-        self.lib = Arctic(mongo_server)[library_name]
-        self.sem = sem
-        self.begin = counter_init
+    def __init__(self, mongo_server, library_name, progress, counter_init, runtime):
+        self.mongo_server = mongo_server
+        self.library_name = library_name
+        self.progress = progress
         self.last = counter_init
-        self.timeout = datetime.now() + timedelta(seconds=runtime)
+        self.runtime = runtime
 
     def run(self):
-        self.sem.acquire()
-        while datetime.now() < self.timeout:
+        """Create the MongoDB client in the child and let failures set its exit code."""
+        library = Arctic(self.mongo_server)[self.library_name]
+        deadline = time.monotonic() + self.runtime
+        while time.monotonic() < deadline:
+            end = self.last + random.randint(2, 11)
+            df = DataFrame(
+                {"v": list(range(self.last, end))},
+                index=[
+                    datetime(2000, 1, 1) + timedelta(seconds=i)
+                    for i in range(self.last, end)
+                ],
+            )
+            df.index.name = "index"
+            library.append("symbol", df)
+            assert_frame_equal(library.read("symbol").data.iloc[-len(df) :], df)
+            self.last = end
+            self.progress.send(self.last)
+
+
+def stop_writer(proc):
+    """Reap every child, escalating to kill if termination does not finish."""
+    if proc.is_alive():
+        proc.terminate()
+    proc.join(timeout=10)
+    if proc.is_alive():
+        proc.kill()
+        proc.join(timeout=10)
+    assert not proc.is_alive(), "Append child could not be stopped"
+
+
+def wait_for_write(proc, progress):
+    """Require a completed write or report the child's unexpected exit."""
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        if progress.poll(0.1):
             try:
-                # Randomy length dataframe to keep appending to
-                df = DataFrame({"v": [self.last]}, [datetime.now()])
-                for i in range(random.randint(1, 10)):
-                    df = df.append(DataFrame({"v": [self.last + i]}, [datetime.now()]))
-                self.last + i
-                df.index.name = "index"
-                self.lib.append("symbol", df)
-                assert self.last in self.lib.read("symbol").data["v"].tolist()
-                self.last += 2
-            except OptimisticLockException:
-                # Concurrent write, not successful
-                pass
-
-    #             time.sleep(self.begin)
-
-    def check_written_data_exists(self):
-        values = self.lib.read("symbol").data["v"].tolist()
-        assert len(set(values)) == len(values), "Written: %s" % values
-        i = self.begin
-        while i < self.last:
-            assert i in values, "Missing %s in %s" % (i, values)
-            i += 2
+                return progress.recv()
+            except EOFError:
+                break
+        if not proc.is_alive():
+            break
+    proc.join(timeout=0.1)
+    pytest.fail(f"Append child did not report a write (exit code {proc.exitcode})")
 
 
 def test_append_kill(library, mongo_host, library_name):
-    # Empty DF to start
-    df = DataFrame({"v": []}, [])
+    df = DataFrame({"v": Series(dtype="int64")}, index=DatetimeIndex([]))
     df.index.name = "index"
     library.write("symbol", df)
 
-    sem = Semaphore(0)
-
-    def run_append(end):
-        app_1 = Appender(mongo_host, library_name, sem, 0, end)
-        proc = Process(target=app_1.run)
+    def run_append(begin, runtime):
+        reader, writer = Pipe(duplex=False)
+        appender = Appender(mongo_host, library_name, writer, begin, runtime)
+        proc = Process(target=appender.run)
         proc.start()
-        sem.release()
-        return proc
+        writer.close()
+        return proc, reader
 
-    def check_written():
-        sym = library.read("symbol")
-        print("Checking written %d" % len(sym.data))
+    def check_written(minimum):
+        data = library.read("symbol").data
+        assert len(data) >= minimum > 0
+        assert data["v"].tolist() == list(range(len(data)))
+        assert data.index.tolist() == [
+            datetime(2000, 1, 1) + timedelta(seconds=i) for i in range(len(data))
+        ]
+        assert data.index.name == "index"
+        return data
 
-    # time how long it takes to do an append operation
-    start = datetime.now()
-    proc = run_append(1)
-    proc.join()
-    check_written()
-    time_taken = (datetime.now() - start).total_seconds()
+    # Establish that an uninterrupted child reaches append and exits successfully.
+    proc, progress = run_append(0, 0.2)
+    try:
+        completed = wait_for_write(proc, progress)
+        proc.join(timeout=15)
+        assert not proc.is_alive(), "Initial append child timed out"
+        assert proc.exitcode == 0, f"Initial append child failed: {proc.exitcode}"
+        previous = check_written(completed)
+    finally:
+        stop_writer(proc)
+        progress.close()
 
-    for i in range(100):
-        print("Loop %d" % i)
-        proc = run_append(100)
-        # kill it randomly
-        time.sleep(2 * (random.random() * time_taken))
-        # Forcibly kill it
-        proc.terminate()
-        # Check we can read the data
-        check_written()
+    for _ in range(100):
+        proc, progress = run_append(len(previous), 60)
+        try:
+            completed = wait_for_write(proc, progress)
+            time.sleep(random.uniform(0, 0.01))
+            assert proc.is_alive(), f"Append child exited unexpectedly: {proc.exitcode}"
+            proc.terminate()
+            proc.join(timeout=10)
+            assert not proc.is_alive(), "Interrupted append child timed out"
+            assert (
+                proc.exitcode == -signal.SIGTERM
+            ), f"Expected forced termination, got exit code {proc.exitcode}"
+            current = check_written(completed)
+            assert_frame_equal(current.iloc[: len(previous)], previous)
+            previous = current
+        finally:
+            stop_writer(proc)
+            progress.close()

@@ -112,7 +112,22 @@ date       id  data
 
 ```
 
-DateRange's only apply to pandas DataFrames, and the dataframe must have a datetime index present.
+Date ranges apply to pandas data with a datetime index. Pickled DataFrames and
+Series with a single object index containing Python `datetime.date` or
+timezone-naive `datetime.datetime` values also support filtering. Strings and
+indexes mixing dates with other objects are not interpreted as dates.
+
+Bounds are inclusive by default; use `DateRange`'s interval argument for open
+boundaries, or `None` for an unbounded end. Date-only observations are compared
+at midnight: a lower bound of `datetime(2020, 1, 2, 12)` excludes January 2,
+while that same upper bound includes January 2. Python `date` bounds also mean
+midnight. Filtering preserves the original index values, dtype, name and row
+order, including duplicate observations, and does not rewrite stored data.
+Timezone-aware bounds are unsupported.
+
+Pickled data is loaded in full before filtering, including legacy inline and
+chunked pickle formats. Libraries using strict handler matching still reject
+date-range arguments for the pickle handler.
 
 Another way to write data is with the [`append`](https://github.com/t1user/arctic_unfrozen/blob/master/arctic/store/version_store.py#L473) method. `append` takes the following arguments:
 

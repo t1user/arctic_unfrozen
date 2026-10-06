@@ -1,5 +1,6 @@
 import io
 import logging
+from datetime import date, datetime, time
 from collections.abc import Iterable, MutableMapping
 from operator import itemgetter
 from typing import Any, Protocol, cast
@@ -8,6 +9,7 @@ import bson
 from bson.binary import Binary
 from bson.errors import InvalidDocument
 import pickle
+from pandas import DataFrame, Series
 
 from ._version_store_utils import checksum, pickle_compat_load, version_base_or_id
 from .._compression import decompress, compress_array
@@ -22,6 +24,42 @@ _HARD_MAX_BSON_ENCODE = 10 * 1024 * 1024  # 10MB
 
 logger = logging.getLogger(__name__)
 _MAX_BSON_ENCODE = cast(int, MAX_BSON_ENCODE)
+
+
+def _slice_date_index(item: Any, date_range: Any) -> Any:
+    """Filter date-like object indexes, comparing date-only values at midnight.
+
+    Only actual Python dates and naive datetimes qualify; strings and mixed
+    non-date indexes retain the existing PickleStore behavior.
+    """
+    if not isinstance(item, (DataFrame, Series)) or item.index.dtype != object:
+        return item
+    if not all(isinstance(value, date) for value in item.index):
+        return item
+    if any(
+        isinstance(value, datetime) and value.tzinfo is not None for value in item.index
+    ):
+        return item
+
+    def at_midnight(value: date) -> datetime:
+        return value if isinstance(value, datetime) else datetime.combine(value, time())
+
+    for bound in (date_range.start, date_range.end):
+        if isinstance(bound, datetime) and bound.tzinfo is not None:
+            raise ValueError("DateRange with timezone not supported")
+    start = at_midnight(date_range.start) if date_range.start is not None else None
+    end = at_midnight(date_range.end) if date_range.end is not None else None
+    mask = []
+    for value in item.index:
+        observation = at_midnight(value)
+        after_start = start is None or (
+            observation > start if date_range.startopen else observation >= start
+        )
+        before_end = end is None or (
+            observation < end if date_range.endopen else observation <= end
+        )
+        mask.append(after_start and before_end)
+    return item.iloc[mask]
 
 
 class _PickleCollection(Protocol):
@@ -51,6 +89,7 @@ class PickleStore(object):
         mongoose_lib: _ArcticLibrary,
         version: MutableMapping[str, Any],
         symbol: Any,
+        date_range: Any = None,
         **_kwargs: Any,
     ) -> Any:
         blob = version.get("blob")
@@ -92,8 +131,10 @@ class PickleStore(object):
                 except:
                     logger.error("Failed to read symbol %s" % symbol)
 
-            return pickle_compat_load(io.BytesIO(data))
-        return version["data"]
+            item = pickle_compat_load(io.BytesIO(data))
+        else:
+            item = version["data"]
+        return _slice_date_index(item, date_range) if date_range else item
 
     @staticmethod
     def read_options() -> list[str]:
